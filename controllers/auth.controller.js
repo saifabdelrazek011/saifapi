@@ -7,9 +7,10 @@ import {
   acceptCodeSchema,
   changeForgetedPasswordSchema,
   changePasswordSchema,
-  emailSchema,
   updateUserInfoSchema,
-} from "../middlewares/validator.js";
+} from "../middlewares/validators/auth.validator.js";
+import { emailSchema } from "../middlewares/validators/validator.js";
+
 import User from "../models/users.model.js";
 import transport from "../config/sendMail.js";
 import { doHash, doHashValidation, hmacProcess } from "../utils/hashing.js";
@@ -106,18 +107,23 @@ export const signup = async (req, res) => {
       `${firstName} ${lastName ? lastName : ""}`
     );
 
-    const info = await transport.sendMail({
-      from: `${SENDER_NAME} <${EMAIL_ADDRESS}>`,
-      to: email,
-      subject: "Welcome to SaifAuth",
-      html: mailMessage,
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: "User created successfully",
-      data: result,
-    });
+    if (NODE_ENV === "production") {
+      await transport.sendMail({
+        from: `${SENDER_NAME} <${EMAIL_ADDRESS}>`,
+        to: email,
+        subject: "Welcome to SaifAuth",
+        html: mailMessage,
+      });
+    }
+    const redirectTo = req.body.redirectTo;
+    if (!redirectTo) {
+      return res.status(201).json({
+        success: true,
+        message: "User created successfully",
+        data: result,
+      });
+    }
+    return res.redirect(redirectTo);
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -177,12 +183,14 @@ export const signin = async (req, res) => {
       );
 
       console.log("Email HTML:", emailHtml);
-      await transport.sendMail({
-        from: `${SENDER_NAME}<${EMAIL_ADDRESS}>`,
-        to: existingUser.email,
-        subject: "New Login Alert - SaifAuth",
-        html: emailHtml,
-      });
+      if (NODE_ENV === "production") {
+        await transport.sendMail({
+          from: `${SENDER_NAME}<${EMAIL_ADDRESS}>`,
+          to: existingUser.email,
+          subject: "New Login Alert - SaifAuth",
+          html: emailHtml,
+        });
+      }
     } catch (emailError) {
       console.error("Failed to send login notification email:", emailError);
     }
@@ -196,18 +204,24 @@ export const signin = async (req, res) => {
       JWT_SECRET,
       { expiresIn: JWT_EXEXPIRES_IN }
     );
-    return res
+    res
       .cookie("Authorization", "Bearer " + token, {
         expires: new Date(Date.now() + 8 * 3600000),
         httpOnly: NODE_ENV === "production",
         secure: NODE_ENV === "production",
       })
-      .status(200)
-      .json({
+      .status(200);
+
+    const redirectTo = req.body.redirectTo;
+
+    if (!redirectTo) {
+      return res.json({
         success: true,
-        message: "User logged in successfully",
-        data: { token },
+        message: "User signed in successfully",
+        token: token,
       });
+    }
+    return res.redirect(redirectTo);
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -628,6 +642,12 @@ export const getUser = async (req, res) => {
   const viewerId = req.user.userId;
   const { email } = req.body;
   try {
+    const { error, value } = emailSchema.validate(email);
+    if (error) {
+      return res
+        .status(400)
+        .json({ success: false, message: error.details[0].message });
+    }
     const viewer = await User.findById(viewerId).select("+role");
 
     if (!viewer) {

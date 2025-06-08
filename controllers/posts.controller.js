@@ -1,6 +1,6 @@
 import express from "express";
 import Post from "../models/posts.model.js";
-import { createPostSchema } from "../middlewares/validator.js";
+import { createPostSchema } from "../middlewares/validators/posts.validator.js";
 
 export const getPosts = async (req, res) => {
   const { page } = req.query;
@@ -51,13 +51,11 @@ export const createPost = async (req, res) => {
 
     const result = await newPost.save();
 
-    res
-      .status(201)
-      .json({
-        success: true,
-        message: "Post created successfully",
-        data: result,
-      });
+    res.status(201).json({
+      success: true,
+      message: "Post created successfully",
+      data: result,
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -101,12 +99,10 @@ export const updatePost = async (req, res) => {
     }
 
     if (existingPost.userId.toString() !== userId) {
-      return res
-        .status(401)
-        .json({
-          success: false,
-          message: "You are not authorized to update this post",
-        });
+      return res.status(401).json({
+        success: false,
+        message: "You are not authorized to update this post",
+      });
     }
 
     const result = await Post.findOneAndUpdate(
@@ -114,13 +110,11 @@ export const updatePost = async (req, res) => {
       { title, description, edited: true },
       { new: true }
     );
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Post updated successfully",
-        data: result,
-      });
+    res.status(200).json({
+      success: true,
+      message: "Post updated successfully",
+      data: result,
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -136,21 +130,17 @@ export const deletePost = async (req, res) => {
         .json({ success: false, message: "Post not found" });
     }
     if (existingPost.userId.toString() !== userId) {
-      return res
-        .status(401)
-        .json({
-          success: false,
-          message: "You are not authorized to delete this post",
-        });
+      return res.status(401).json({
+        success: false,
+        message: "You are not authorized to delete this post",
+      });
     }
     const result = await Post.findOneAndDelete({ _id: postId });
-    res
-      .status(200)
-      .json({
-        success: true,
-        message: "Post deleted successfully",
-        data: result,
-      });
+    res.status(200).json({
+      success: true,
+      message: "Post deleted successfully",
+      data: result,
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
