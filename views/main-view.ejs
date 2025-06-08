@@ -89,6 +89,11 @@
             </thead>
             <tbody>
               <tr>
+                <td>GET</td>
+                <td>/auth</td>
+                <td>Render authentication view</td>
+              </tr>
+              <tr>
                 <td>POST</td>
                 <td>/auth/signup</td>
                 <td>Register a new user</td>
@@ -101,17 +106,17 @@
               <tr>
                 <td>POST</td>
                 <td>/auth/signout</td>
-                <td>User logout</td>
+                <td>User logout (requires authentication)</td>
               </tr>
               <tr>
                 <td>PATCH</td>
                 <td>/auth/verification/send</td>
-                <td>Send email verification code</td>
+                <td>Send email verification code (requires authentication)</td>
               </tr>
               <tr>
                 <td>PATCH</td>
                 <td>/auth/verification/verify</td>
-                <td>Verify email with code</td>
+                <td>Verify email with code (requires authentication)</td>
               </tr>
               <tr>
                 <td>PATCH</td>
@@ -121,7 +126,7 @@
               <tr>
                 <td>PATCH</td>
                 <td>/auth/password</td>
-                <td>Change password (logged in)</td>
+                <td>Change password (requires authentication)</td>
               </tr>
               <tr>
                 <td>PATCH</td>
@@ -131,22 +136,22 @@
               <tr>
                 <td>DELETE</td>
                 <td>/auth/users/one</td>
-                <td>Delete current user</td>
+                <td>Delete current user (requires authentication)</td>
               </tr>
               <tr>
                 <td>PATCH</td>
                 <td>/auth/users/one</td>
-                <td>Update current user info</td>
+                <td>Update current user info (requires authentication)</td>
               </tr>
               <tr>
                 <td>GET</td>
                 <td>/auth/users/one</td>
-                <td>Get current user info</td>
+                <td>Get current user info (requires authentication)</td>
               </tr>
               <tr>
                 <td>GET</td>
                 <td>/auth/users/all</td>
-                <td>Get all users (admin only)</td>
+                <td>Get all users (admin only, requires authentication)</td>
               </tr>
             </tbody>
           </table>
@@ -178,22 +183,22 @@
               <tr>
                 <td>POST</td>
                 <td>/posts</td>
-                <td>Create a new post (auth required)</td>
+                <td>Create a new post (requires authentication)</td>
               </tr>
               <tr>
                 <td>PUT</td>
                 <td>/posts/:postId</td>
-                <td>Update a post (auth required, owner only)</td>
+                <td>Update a post (requires authentication, owner only)</td>
               </tr>
               <tr>
                 <td>DELETE</td>
                 <td>/posts/:postId</td>
-                <td>Delete a post (auth required, owner only)</td>
+                <td>Delete a post (requires authentication, owner only)</td>
               </tr>
               <tr>
                 <td>GET</td>
                 <td>/posts/users/:userId</td>
-                <td>Get all posts for a user (auth required)</td>
+                <td>Get all posts for a user (requires authentication)</td>
               </tr>
             </tbody>
           </table>
@@ -216,14 +221,21 @@
             </thead>
             <tbody>
               <tr>
-                <td>GET</td>
-                <td>/shorturls</td>
-                <td>Get all short URLs (admin view if token provided)</td>
-              </tr>
-              <tr>
                 <td>POST</td>
                 <td>/shorturls</td>
-                <td>Create a new short URL (auth required)</td>
+                <td>Create a new short URL (requires authentication)</td>
+              </tr>
+              <tr>
+                <td>GET</td>
+                <td>/shorturls</td>
+                <td>Get your short URLs (requires authentication)</td>
+              </tr>
+              <tr>
+                <td>GET</td>
+                <td>/shorturls/all</td>
+                <td>
+                  Get all short URLs (admin only, requires authentication)
+                </td>
               </tr>
               <tr>
                 <td>GET</td>
@@ -233,12 +245,22 @@
               <tr>
                 <td>PATCH</td>
                 <td>/shorturls/:shorturlId</td>
-                <td>Update a short URL (auth required)</td>
+                <td>Update a short URL (requires authentication)</td>
               </tr>
               <tr>
                 <td>DELETE</td>
                 <td>/shorturls/:shorturlId</td>
-                <td>Delete a short URL (auth required)</td>
+                <td>Delete a short URL (requires authentication)</td>
+              </tr>
+              <tr>
+                <td>GET</td>
+                <td>/shorturls/user/:userId</td>
+                <td>Get all short URLs for a user (requires authentication)</td>
+              </tr>
+              <tr>
+                <td>GET</td>
+                <td>/shorturls/my</td>
+                <td>Get your short URLs (alias, requires authentication)</td>
               </tr>
             </tbody>
           </table>
@@ -263,42 +285,44 @@
               <tr>
                 <td>GET</td>
                 <td>/subscriptions</td>
-                <td>Get all subscriptions (placeholder)</td>
+                <td>Get all subscriptions</td>
               </tr>
               <tr>
                 <td>GET</td>
                 <td>/subscriptions/:id</td>
-                <td>Get subscription details (placeholder)</td>
+                <td>Get subscription details</td>
               </tr>
               <tr>
                 <td>POST</td>
                 <td>/subscriptions</td>
-                <td>Create a new subscription (auth required)</td>
+                <td>Create a new subscription (requires authentication)</td>
               </tr>
               <tr>
                 <td>PUT</td>
                 <td>/subscriptions/:id</td>
-                <td>Update a subscription (placeholder)</td>
+                <td>Update a subscription</td>
               </tr>
               <tr>
                 <td>DELETE</td>
                 <td>/subscriptions/:id</td>
-                <td>Delete a subscription (placeholder)</td>
+                <td>Delete a subscription</td>
               </tr>
               <tr>
                 <td>GET</td>
                 <td>/subscriptions/user/:id</td>
-                <td>Get all subscriptions for a user (auth required)</td>
+                <td>
+                  Get all subscriptions for a user (requires authentication)
+                </td>
               </tr>
               <tr>
                 <td>PUT</td>
                 <td>/subscriptions/:id/cancel</td>
-                <td>Cancel a subscription (placeholder)</td>
+                <td>Cancel a subscription</td>
               </tr>
               <tr>
                 <td>GET</td>
                 <td>/subscriptions/upcoming-renewals</td>
-                <td>Get upcoming renewals (placeholder)</td>
+                <td>Get upcoming renewals</td>
               </tr>
             </tbody>
           </table>
@@ -307,6 +331,16 @@
 
       <footer class="text-center mt-5">
         <hr />
+        <div class="mb-3">
+          <a
+            href="https://github.com/saifabdelrazek011"
+            target="_blank"
+            class="btn btn-dark fw-bold"
+            style="font-size: 1.1em"
+          >
+            ⭐ Star the Project on GitHub
+          </a>
+        </div>
         <p>
           <b>SaifAPI</b> &copy; <%= new Date().getFullYear() %> &mdash;
           <a href="https://github.com/saifabdelrazek011/saifapi" target="_blank"
@@ -314,6 +348,12 @@
           >
           &middot;
           <a href="mailto:dev@saifabdelrazek.com">Contact</a>
+        </p>
+        <p class="mt-2">
+          <small>
+            Found an issue or have feedback? Email us at
+            <a href="mailto:dev@saifabdelrazek.com">dev@saifabdelrazek.com</a>
+          </small>
         </p>
       </footer>
     </div>
