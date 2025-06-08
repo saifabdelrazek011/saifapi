@@ -39,30 +39,53 @@ export const getUserShortUrls = async (req, res) => {
   }
 };
 
-// GET ALL SHORT URLS
+// GET MY SHORT URLS
+export const getMyShortUrls = async (req, res) => {
+  const viewerId = req.user.userId;
+  try {
+    const viewerUser = await User.findById(viewerId);
+    if (!viewerUser) {
+      return res.status(404).send("You are not registered.");
+    }
+    const shortUrls = await ShortUrl.find({ createdBy: viewerId });
+    if (!shortUrls || shortUrls.length === 0) {
+      return res.status(404).send("No short URLs found for you.");
+    }
+    return res.status(200).json({
+      success: true,
+      message: "Your short URLs fetched successfully.",
+      shortUrls: shortUrls,
+    });
+  } catch (error) {
+    console.error("Error fetching viewer user:", error);
+    return res.status(500).send("Internal Server Error: " + error.message);
+  }
+};
+
+// GET ALL SHORT URLS FOR ADMIN OR SUPERADMIN
 export const getAllShortUrls = async (req, res) => {
   const viewerId = req.user.userId;
-  const viewerUser = await User.findById(viewerId);
   try {
-    if (
-      !viewerUser ||
-      !viewerUser.role === "admin" ||
-      !viewerUser.role === "superAdmin"
-    ) {
-      return res
-        .status(403)
-        .send("Forbidden: You are not allowed to view all short URLs.");
+    const viewerUser = await User.findById(viewerId);
+    if (!viewerUser) {
+      return res.status(404).send("You are not registered.");
     }
 
-    const shortUrls = await ShortUrl.find();
-    if (!shortUrls || shortUrls.length === 0) {
-      return res.status(404).send("No short URLs found.");
-    }
+    if (viewerUser.role === "admin" || viewerUser.role === "superAdmin") {
+      const shortUrls = await ShortUrl.find();
+      if (!shortUrls || shortUrls.length === 0) {
+        return res.status(404).send("No short URLs found.");
+      }
 
-    res.status(200).json({
-      success: true,
-      message: "All short URLs fetched successfully.",
-      shortUrls: shortUrls,
+      return res.status(200).json({
+        success: true,
+        message: "All short URLs fetched successfully.",
+        shortUrls: shortUrls,
+      });
+    }
+    return res.status(403).json({
+      success: false,
+      message: "Forbidden: You are not allowed to view all short URLs.",
     });
   } catch (error) {
     console.error("Error fetching all short URLs:", error);
