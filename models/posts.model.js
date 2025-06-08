@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { postsDB } from "../databases/connections.js";
+import { postsDB } from "../databases/mongodb.databases.js";
 
 const postSchema = new mongoose.Schema(
   {

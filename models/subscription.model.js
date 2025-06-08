@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { subscriptionDB } from "../databases/connections.js";
+import { subscriptionDB } from "../databases/mongodb.databases.js";
 
 const subscriptionSchema = new mongoose.Schema(
   {

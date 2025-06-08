@@ -1,5 +1,5 @@
 import { nanoid } from "nanoid";
-import { shortUrlDB } from "../databases/connections.js";
+import { shortUrlDB } from "../databases/mongodb.databases.js";
 import mongoose from "mongoose";
 
 const shortUrlSchema = new mongoose.Schema(
