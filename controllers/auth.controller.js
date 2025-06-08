@@ -107,14 +107,16 @@ export const signup = async (req, res) => {
       `${firstName} ${lastName ? lastName : ""}`
     );
 
-    if (NODE_ENV === "production") {
-      await transport.sendMail({
-        from: `${SENDER_NAME} <${EMAIL_ADDRESS}>`,
-        to: email,
-        subject: "Welcome to SaifAuth",
-        html: mailMessage,
-      });
-    }
+    // Handle email sending based on environment
+    NODE_ENV === "production"
+      ? await transport.sendMail({
+          from: `${SENDER_NAME} <${EMAIL_ADDRESS}>`,
+          to: email,
+          subject: "Welcome to SaifAuth",
+          html: mailMessage,
+        })
+      : console.log("Email HTML:", mailMessage);
+
     const redirectTo = req.body.redirectTo;
     if (!redirectTo) {
       return res.status(201).json({
@@ -182,15 +184,15 @@ export const signin = async (req, res) => {
         loginTime
       );
 
-      console.log("Email HTML:", emailHtml);
-      if (NODE_ENV === "production") {
-        await transport.sendMail({
-          from: `${SENDER_NAME}<${EMAIL_ADDRESS}>`,
-          to: existingUser.email,
-          subject: "New Login Alert - SaifAuth",
-          html: emailHtml,
-        });
-      }
+      // Handle email sending based on environment
+      NODE_ENV === "development"
+        ? console.log("Email HTML:", emailHtml)
+        : await transport.sendMail({
+            from: `${SENDER_NAME}<${EMAIL_ADDRESS}>`,
+            to: existingUser.email,
+            subject: "New Login Alert - SaifAuth",
+            html: emailHtml,
+          });
     } catch (emailError) {
       console.error("Failed to send login notification email:", emailError);
     }
@@ -671,7 +673,9 @@ export const getUser = async (req, res) => {
         existingUser,
       });
     } else if (viewer.role === "admin" || viewer.email === email) {
-      const existingUser = await User.find().select("+role +password");
+      const existingUser = await User.findOne({ email }).select(
+        "+role +password"
+      );
       if (!existingUser) {
         return res
           .status(404)
