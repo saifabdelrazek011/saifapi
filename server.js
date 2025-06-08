@@ -37,9 +37,12 @@ app.use("/v1/shorturls", arcjectMiddleware, shorturlsRouter);
 app.use("/v1/subscriptions", arcjectMiddleware, subscriptionRouter);
 
 app.get("/", (req, res) => {
-  res.send("Welcome to the SaifAPI!");
+  res.render("main-view", { title: "Welcome to the API" });
 });
 
+app.use((req, res) => {
+  res.status(404).render("404-view", { title: "404 Not Found" });
+});
 app.listen(PORT || 3000, () => {
   console.log("Server is running on port " + PORT || 3000);
 });
