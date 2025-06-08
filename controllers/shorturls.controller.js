@@ -1,39 +1,99 @@
 import ShortUrl from "../models/shorturls.model.js";
 import { nanoid } from "nanoid";
-import { ACCESS_TOKEN } from "../config/env.js";
+import User from "../models/users.model.js";
 
-export const getShortUrlsViews = async (req, res) => {
+import { createShortUrlSchema } from "../middlewares/validators/shorturls.validator.js";
+
+// GET A USER'S SHORT URLS
+export const getUserShortUrls = async (req, res) => {
+  const { userId } = req.params;
+  const viewerId = req.user.userId;
   try {
-    const token = req.query.token;
-    const shortUrls = await ShortUrl.find();
-
-    if (token === ACCESS_TOKEN) {
-      return res.render("shorturls-admin-view", {
-        shortUrls: shortUrls,
-        token: token,
-      });
+    const viewerUser = await User.findById(viewerId);
+    if (
+      viewerId !== userId &&
+      !viewerUser.role === "admin" &&
+      !viewerUser.role === "superAdmin"
+    ) {
+      return res
+        .status(403)
+        .send("Forbidden: You are not allowed to view this user's short URLs.");
     }
-    res.render("shorturls-viewer-view", { shortUrls: shortUrls });
+
+    const shortUrls = await ShortUrl.find({ createdBy: userId });
+    if (!shortUrls || shortUrls.length === 0) {
+      return res.status(404).send("No short URLs found for this user.");
+    }
+    return res.status(200).json({
+      success: true,
+      message: "Short URLs fetched successfully.",
+      shortUrls: shortUrls,
+    });
   } catch (error) {
-    console.error("Error fetching views:", error);
-    res.status(500).send("Internal Server Error");
+    console.error("Error fetching user's short URLs:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message,
+    });
+  }
+};
+
+// GET ALL SHORT URLS
+export const getAllShortUrls = async (req, res) => {
+  const viewerId = req.user.userId;
+  const viewerUser = await User.findById(viewerId);
+  try {
+    if (
+      !viewerUser ||
+      !viewerUser.role === "admin" ||
+      !viewerUser.role === "superAdmin"
+    ) {
+      return res
+        .status(403)
+        .send("Forbidden: You are not allowed to view all short URLs.");
+    }
+
+    const shortUrls = await ShortUrl.find();
+    if (!shortUrls || shortUrls.length === 0) {
+      return res.status(404).send("No short URLs found.");
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "All short URLs fetched successfully.",
+      shortUrls: shortUrls,
+    });
+  } catch (error) {
+    console.error("Error fetching all short URLs:", error);
+    res.status(500).send("Internal Server Error: " + error.message);
   }
 };
 
 // CREATE A NEW SHORT URL
 export const createShortUrl = async (req, res) => {
+  const creatorId = req.user.userId;
+  const { fullUrl, shortUrl } = req.body;
   try {
-    const { fullUrl, token, customShortUrl } = req.body;
+    const { error, value } = createShortUrlSchema.validate({
+      fullUrl,
+      shortUrl,
+    });
+    if (error) {
+      return res.status(400).send(`Validation error: ${error.message}`);
+    }
     const domain = `${req.protocol}://${req.headers.host}`;
 
-    if (token !== accessToken) {
-      return res.status(403).send("Forbidden: Invalid access token");
-    }
     if (!fullUrl) {
       return res.status(400).send("Full URL is required.");
     }
+    if (!creatorId) {
+      return res
+        .status(401)
+        .send("Unauthorized: you must be logged in to create a short URL.");
+    }
 
-    const short = customShortUrl || nanoid(7);
+    const short = shortUrl || nanoid(7);
     const existingShort = await ShortUrl.findOne({ short });
     if (existingShort) {
       return res.status(400).send("Custom short URL already exists.");
@@ -44,12 +104,16 @@ export const createShortUrl = async (req, res) => {
       return res
         .status(400)
         .send(
-          `Full URL already exists at <a href="${domain}/${existingFull.short}">${domain}/${existingFull.short}</a>`
+          `Full URL already exists at <a href="${domain}/v1/shorturls/${existingFull.short}">${domain}/v1/shorturls/${existingFull.short}</a>`
         );
     }
 
-    await ShortUrl.create({ full: fullUrl, short });
-    res.redirect("/?token=" + token);
+    await ShortUrl.create({ full: fullUrl, short, createdBy: creatorId });
+    return res.status(201).send({
+      success: true,
+      message: "Short URL created successfully.",
+      shortUrl: `${domain}/v1/shorturls/${short}`,
+    });
   } catch (error) {
     console.error("Error creating short URL:", error);
     res.status(500).send("Internal Server Error");
@@ -60,8 +124,9 @@ export const createShortUrl = async (req, res) => {
 export const useShortUrl = async (req, res) => {
   try {
     const shortUrl = await ShortUrl.findOne({ short: req.params.shorturl });
-    if (!shortUrl) return res.redirect("/");
-
+    if (!shortUrl) {
+      return res.status(404).send("Short URL not found. ");
+    }
     shortUrl.clicks++;
     await shortUrl.save();
     res.redirect(shortUrl.full);
@@ -73,28 +138,48 @@ export const useShortUrl = async (req, res) => {
 
 // UPDATE AN EXISTING SHORT URL
 export const updateShortUrl = async (req, res) => {
-  const { fullUrl, customShortUrl } = req.body;
-  const token = req.query.token;
+  const { fullUrl, shortUrl } = req.body;
+  const updaterId = req.user.userId;
   const { shorturlId } = req.params;
 
-  if (token !== accessToken) {
-    return res.status(401).json({ success: false, message: "Invalid token" });
-  }
-
   try {
-    const updated = await ShortUrl.findByIdAndUpdate(
-      shorturlId,
-      { full: fullUrl, short: customShortUrl },
-      { new: true }
-    );
+    const requestedUrl = await ShortUrl.findById(shorturlId);
 
-    if (!updated) {
+    const updaterUser = await User.findById(updaterId);
+    if (
+      !updaterUser ||
+      (!updaterUser.role === "admin" &&
+        !updaterUser.role === "superAdmin" &&
+        requestedUrl.createdBy.toString() !== updaterId)
+    ) {
+      return res
+        .status(403)
+        .send("Forbidden: You are not allowed to update this short URL.");
+    }
+
+    if (!requestedUrl) {
       return res
         .status(404)
         .json({ success: false, message: "Short URL not found" });
     }
 
-    res.json({ success: true, updated });
+    const updated = await ShortUrl.findByIdAndUpdate(
+      shorturlId,
+      { full: fullUrl, short: shortUrl },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: "Short URL not found or update failed",
+      });
+    }
+    res.status(200).json({
+      success: true,
+      message: "Short URL updated successfully",
+      shortUrl: updated,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: "Server error" });
@@ -103,16 +188,27 @@ export const updateShortUrl = async (req, res) => {
 
 // DELETE A SHORT URL
 export const deleteShortUrl = async (req, res) => {
+  const deleterId = req.user.userId;
+  const { shorturlId } = req.params;
   try {
-    const { shorturlId } = req.params;
-    const { token } = req.query;
-
-    if (token !== accessToken) {
-      return res.status(403).send("Forbidden: Invalid access token");
+    const requestedUrl = await ShortUrl.findById(shorturlId);
+    if (!requestedUrl) {
+      return res.status(404).send("Short URL not found.");
     }
-
+    const deleterUser = await User.findById(deleterId);
+    if (
+      !deleterUser ||
+      (!deleterUser.role === "admin" &&
+        !deleterUser.role === "superAdmin" &&
+        requestedUrl.createdBy.toString() !== deleterId)
+    ) {
+      return res
+        .status(403)
+        .send("Forbidden: You are not allowed to delete this short URL.");
+    }
     await ShortUrl.findByIdAndDelete(shorturlId);
-    res.redirect("/?token=" + token);
+
+    res.status(200).send("Short URL deleted successfully.");
   } catch (error) {
     console.error("Error deleting short URL:", error);
     res.status(500).send("Internal Server Error");
