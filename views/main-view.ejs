@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SaifAPI</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css"
+    />
+    <style>
+      body {
+        background: #f8f9fa;
+      }
+      .container {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+        padding: 32px 24px;
+        margin-top: 40px;
+        margin-bottom: 40px;
+      }
+      h1,
+      h2,
+      h3 {
+        font-weight: bold;
+      }
+      .badge {
+        font-size: 1em;
+      }
+      table th,
+      table td {
+        vertical-align: middle !important;
+      }
+      .endpoint-table {
+        margin-bottom: 2.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1 class="text-center mb-4 text-primary">SaifAPI Documentation</h1>
+      <p class="lead text-center mb-5">
+        <b>SaifAPI</b> is a modular RESTful API providing authentication, posts,
+        short URL, and subscription management services.<br />
+        Built with Node.js, Express, MongoDB, and modern security best
+        practices.
+      </p>
+
+      <div class="mb-4">
+        <h2>Features</h2>
+        <ul>
+          <li>
+            🔐 <b>Authentication</b>: Secure signup, signin, JWT, email
+            verification, password reset, and user management.
+          </li>
+          <li>
+            📝 <b>Posts</b>: CRUD operations for user posts, with user-based
+            access control.
+          </li>
+          <li>
+            🔗 <b>Short URLs</b>: Create, manage, and track short URLs with
+            click analytics.
+          </li>
+          <li>
+            💳 <b>Subscriptions</b>: Manage recurring subscriptions, renewal
+            dates, and reminders.
+          </li>
+        </ul>
+      </div>
+
+      <div class="mb-4">
+        <h2>Base URL</h2>
+        <code>https://api.saifabdelrazek.com/v1/</code>
+      </div>
+
+      <div class="mb-4">
+        <h2>
+          Authentication Endpoints <span class="badge bg-primary">/auth</span>
+        </h2>
+        <div class="table-responsive endpoint-table">
+          <table class="table table-bordered table-striped">
+            <thead class="table-dark">
+              <tr>
+                <th>Method</th>
+                <th>Endpoint</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>POST</td>
+                <td>/auth/signup</td>
+                <td>Register a new user</td>
+              </tr>
+              <tr>
+                <td>POST</td>
+                <td>/auth/signin</td>
+                <td>User login</td>
+              </tr>
+              <tr>
+                <td>POST</td>
+                <td>/auth/signout</td>
+                <td>User logout</td>
+              </tr>
+              <tr>
+                <td>PATCH</td>
+                <td>/auth/verification/send</td>
+                <td>Send email verification code</td>
+              </tr>
+              <tr>
+                <td>PATCH</td>
+                <td>/auth/verification/verify</td>
+                <td>Verify email with code</td>
+              </tr>
+              <tr>
+                <td>PATCH</td>
+                <td>/auth/password/forget</td>
+                <td>Send forgot password code</td>
+              </tr>
+              <tr>
+                <td>PATCH</td>
+                <td>/auth/password</td>
+                <td>Change password (logged in)</td>
+              </tr>
+              <tr>
+                <td>PATCH</td>
+                <td>/auth/password/reset</td>
+                <td>Reset forgotten password</td>
+              </tr>
+              <tr>
+                <td>DELETE</td>
+                <td>/auth/users/one</td>
+                <td>Delete current user</td>
+              </tr>
+              <tr>
+                <td>PATCH</td>
+                <td>/auth/users/one</td>
+                <td>Update current user info</td>
+              </tr>
+              <tr>
+                <td>GET</td>
+                <td>/auth/users/one</td>
+                <td>Get current user info</td>
+              </tr>
+              <tr>
+                <td>GET</td>
+                <td>/auth/users/all</td>
+                <td>Get all users (admin only)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <h2>Posts Endpoints <span class="badge bg-success">/posts</span></h2>
+        <div class="table-responsive endpoint-table">
+          <table class="table table-bordered table-striped">
+            <thead class="table-dark">
+              <tr>
+                <th>Method</th>
+                <th>Endpoint</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>GET</td>
+                <td>/posts</td>
+                <td>Get paginated posts</td>
+              </tr>
+              <tr>
+                <td>GET</td>
+                <td>/posts/:postId</td>
+                <td>Get a single post by ID</td>
+              </tr>
+              <tr>
+                <td>POST</td>
+                <td>/posts</td>
+                <td>Create a new post (auth required)</td>
+              </tr>
+              <tr>
+                <td>PUT</td>
+                <td>/posts/:postId</td>
+                <td>Update a post (auth required, owner only)</td>
+              </tr>
+              <tr>
+                <td>DELETE</td>
+                <td>/posts/:postId</td>
+                <td>Delete a post (auth required, owner only)</td>
+              </tr>
+              <tr>
+                <td>GET</td>
+                <td>/posts/users/:userId</td>
+                <td>Get all posts for a user (auth required)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <h2>
+          Short URLs Endpoints
+          <span class="badge bg-warning text-dark">/shorturls</span>
+        </h2>
+        <div class="table-responsive endpoint-table">
+          <table class="table table-bordered table-striped">
+            <thead class="table-dark">
+              <tr>
+                <th>Method</th>
+                <th>Endpoint</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>GET</td>
+                <td>/shorturls</td>
+                <td>Get all short URLs (admin view if token provided)</td>
+              </tr>
+              <tr>
+                <td>POST</td>
+                <td>/shorturls</td>
+                <td>Create a new short URL (auth required)</td>
+              </tr>
+              <tr>
+                <td>GET</td>
+                <td>/shorturls/:shorturl</td>
+                <td>Redirect to the full URL</td>
+              </tr>
+              <tr>
+                <td>PATCH</td>
+                <td>/shorturls/:shorturlId</td>
+                <td>Update a short URL (auth required)</td>
+              </tr>
+              <tr>
+                <td>DELETE</td>
+                <td>/shorturls/:shorturlId</td>
+                <td>Delete a short URL (auth required)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <h2>
+          Subscriptions Endpoints
+          <span class="badge bg-info text-dark">/subscriptions</span>
+        </h2>
+        <div class="table-responsive endpoint-table">
+          <table class="table table-bordered table-striped">
+            <thead class="table-dark">
+              <tr>
+                <th>Method</th>
+                <th>Endpoint</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>GET</td>
+                <td>/subscriptions</td>
+                <td>Get all subscriptions (placeholder)</td>
+              </tr>
+              <tr>
+                <td>GET</td>
+                <td>/subscriptions/:id</td>
+                <td>Get subscription details (placeholder)</td>
+              </tr>
+              <tr>
+                <td>POST</td>
+                <td>/subscriptions</td>
+                <td>Create a new subscription (auth required)</td>
+              </tr>
+              <tr>
+                <td>PUT</td>
+                <td>/subscriptions/:id</td>
+                <td>Update a subscription (placeholder)</td>
+              </tr>
+              <tr>
+                <td>DELETE</td>
+                <td>/subscriptions/:id</td>
+                <td>Delete a subscription (placeholder)</td>
+              </tr>
+              <tr>
+                <td>GET</td>
+                <td>/subscriptions/user/:id</td>
+                <td>Get all subscriptions for a user (auth required)</td>
+              </tr>
+              <tr>
+                <td>PUT</td>
+                <td>/subscriptions/:id/cancel</td>
+                <td>Cancel a subscription (placeholder)</td>
+              </tr>
+              <tr>
+                <td>GET</td>
+                <td>/subscriptions/upcoming-renewals</td>
+                <td>Get upcoming renewals (placeholder)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h2>SaifURL Viewer</h2>
+        <p>
+          You can view short URLs service at
+          <a href="/v1/shorturls">Viewer page</a>
+        </p>
+      </div>
+
+      <footer class="text-center mt-5">
+        <hr />
+        <p>
+          <b>SaifAPI</b> &copy; <%= new Date().getFullYear() %> &mdash;
+          <a
+            href="https://github.com/saifabdelrazek011/saifauth"
+            target="_blank"
+            >GitHub</a
+          >
+          &middot;
+          <a href="mailto:dev@saifabdelrazek.com">Contact</a>
+        </p>
+      </footer>
+    </div>
+  </body>
+</html>
