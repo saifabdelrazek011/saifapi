@@ -4,7 +4,6 @@ import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
-import mongoose from "mongoose";
 import methodOverride from "method-override";
 
 // Import routers
@@ -12,10 +11,11 @@ import authRouter from "./routers/auth.router.js";
 import postsRouter from "./routers/posts.router.js";
 import shorturlsRouter from "./routers/shorturls.router.js";
 import subscriptionRouter from "./routers/subscription.routes.js";
+import newsletterRouter from "./routers/newsletter.router.js";
 
 // Import middlewares
-import arcjectMiddleware from "./middlewares/arcjet.middleware.js";
-import { MONGODB_URI, PORT } from "./config/env.js";
+import arcjetMiddleware from "./middlewares/arcjet.middleware.js";
+import { PORT } from "./config/env.js";
 
 dotenv.config();
 
@@ -31,10 +31,11 @@ app.use(express.urlencoded({ extended: false }));
 
 app.set("view engine", "ejs");
 
-app.use("/v1/auth", arcjectMiddleware, authRouter);
-app.use("/v1/posts", arcjectMiddleware, postsRouter);
-app.use("/v1/shorturls", arcjectMiddleware, shorturlsRouter);
-app.use("/v1/subscriptions", arcjectMiddleware, subscriptionRouter);
+app.use("/v1/auth", arcjetMiddleware, authRouter);
+app.use("/v1/posts", arcjetMiddleware, postsRouter);
+app.use("/v1/shorturls", arcjetMiddleware, shorturlsRouter);
+app.use("/v1/subscriptions", arjectMiddleware, subscriptionRouter);
+app.use("/v1/newsletter", arjectMiddleware, newsletterRouter);
 
 app.get("/", (req, res) => {
   res.render("main-view", { title: "Welcome to the API" });
