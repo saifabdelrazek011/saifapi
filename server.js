@@ -34,8 +34,8 @@ app.set("view engine", "ejs");
 app.use("/v1/auth", arcjetMiddleware, authRouter);
 app.use("/v1/posts", arcjetMiddleware, postsRouter);
 app.use("/v1/shorturls", arcjetMiddleware, shorturlsRouter);
-app.use("/v1/subscriptions", arjectMiddleware, subscriptionRouter);
-app.use("/v1/newsletter", arjectMiddleware, newsletterRouter);
+app.use("/v1/subscriptions", arcjetMiddleware, subscriptionRouter);
+// app.use("/v1/newsletter", arcjetMiddleware, newsletterRouter);
 
 app.get("/", (req, res) => {
   res.render("main-view", { title: "Welcome to the API" });
