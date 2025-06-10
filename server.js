@@ -11,7 +11,7 @@ import authRouter from "./routers/auth.router.js";
 import postsRouter from "./routers/posts.router.js";
 import shorturlsRouter from "./routers/shorturls.router.js";
 import subscriptionRouter from "./routers/subscription.routes.js";
-import newsletterRouter from "./routers/newsletter.router.js";
+//import newsletterRouter from "./routers/newsletter.router.js";
 
 // Import middlewares
 import arcjetMiddleware from "./middlewares/arcjet.middleware.js";
