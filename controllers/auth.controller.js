@@ -7,7 +7,6 @@ import {
   acceptCodeSchema,
   changeForgetedPasswordSchema,
   changePasswordSchema,
-  updateUserInfoSchema,
 } from "../middlewares/validators/auth.validator.js";
 import { emailSchema } from "../middlewares/validators/validator.js";
 
@@ -48,7 +47,7 @@ const getClientIP = (req) => {
   return ip;
 };
 
-const getLocationFromIP = (ip) => {
+const getLocationFromIP = async (ip) => {
   if (ip === "127.0.0.1" || ip.startsWith("192.168.") || ip.startsWith("10.")) {
     return "Local Network";
   }
@@ -57,7 +56,7 @@ const getLocationFromIP = (ip) => {
   if (ip === "::1") {
     return "Local Development";
   }
-  const geo = geoip.lookup(ip);
+  const geo = await geoip.lookup(ip);
   if (geo) {
     return `${geo.city || "Unknown City"}, ${geo.region || "Unknown Region"}, ${
       geo.country || "Unknown Country"
@@ -132,7 +131,7 @@ export const signup = async (req, res) => {
 };
 
 export const signin = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, requestedAt } = req.body;
   try {
     const { error, value } = signinSchema.validate({ email, password });
 
@@ -174,6 +173,8 @@ export const signin = async (req, res) => {
       showTimeZone: true,
       timeZoneName: "short",
     });
+
+    // send login notification email
     try {
       const emailHtml = loginNotificationTemplate(
         `${existingUser.firstName} ${
@@ -181,7 +182,8 @@ export const signin = async (req, res) => {
         }`,
         ipAddress,
         location,
-        loginTime
+        loginTime,
+        requestedAt ? requestedAt : "Unknown Site"
       );
 
       // Handle email sending based on environment
@@ -266,15 +268,8 @@ export const sendVerification = async (req, res) => {
 
     const codeValue = Math.floor(1000000 * Math.random()).toString();
 
-    let info = await transport.sendMail({
-      from: `SaifAuth verifier<${EMAIL_ADDRESS}>`,
-      to: existingUser.email,
-      subject: "Verify your email",
-      html: `<p>Your verification code is <b>${codeValue}</b></p>
-            <p>This code will expire in 5 minutes</p>`,
-    });
-
-    if (info.accepted[0] === existingUser.email) {
+    if (NODE_ENV === "development") {
+      console.log("Verification Code:", codeValue);
       const hashedCodeValue = hmacProcess(codeValue, HMAC_SECRET);
       existingUser.verificationCode = hashedCodeValue;
       existingUser.verificationCodeValidation = Date.now();
@@ -283,8 +278,26 @@ export const sendVerification = async (req, res) => {
         success: true,
         message: "Verification code sent successfully",
       });
-    }
+    } else if (NODE_ENV === "production") {
+      let info = await transport.sendMail({
+        from: `SaifAuth verifier<${EMAIL_ADDRESS}>`,
+        to: existingUser.email,
+        subject: "Verify your email",
+        html: `<p>Your verification code is <b>${codeValue}</b></p>
+            <p>This code will expire in 5 minutes</p>`,
+      });
 
+      if (info.accepted[0] === existingUser.email) {
+        const hashedCodeValue = hmacProcess(codeValue, HMAC_SECRET);
+        existingUser.verificationCode = hashedCodeValue;
+        existingUser.verificationCodeValidation = Date.now();
+        await existingUser.save();
+        return res.status(200).json({
+          success: true,
+          message: "Verification code sent successfully",
+        });
+      }
+    }
     res
       .status(400)
       .json({ success: false, message: "Verification code not sent" });
@@ -434,15 +447,8 @@ export const sendForgotPasswordCode = async (req, res) => {
     }
     const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-    let info = await transport.sendMail({
-      from: `${SENDER_NAME}<${EMAIL_ADDRESS}>`,
-      to: existingUser.email,
-      subject: "Forgot Password Verification Code",
-      html: `<p>Your forget password verification code <b>${code}</b></p>
-            <p>This code will expire in 10 minutes</p>`,
-    });
-
-    if (info.accepted[0] === existingUser.email) {
+    if (NODE_ENV === "development") {
+      console.log("Forgot Password Code:", code);
       const hashedCodeValue = hmacProcess(code, HMAC_SECRET);
       existingUser.forgetPasswordCode = hashedCodeValue;
       existingUser.forgetPasswordCodeValidation = Date.now();
@@ -451,11 +457,34 @@ export const sendForgotPasswordCode = async (req, res) => {
         success: true,
         message: "Verification code sent successfully",
       });
-    }
+    } else if (NODE_ENV === "production") {
+      let info = await transport.sendMail({
+        from: `${SENDER_NAME}<${EMAIL_ADDRESS}>`,
+        to: existingUser.email,
+        subject: "Forgot Password Verification Code",
+        html: `<p>Your forget password verification code <b>${code}</b></p>
+            <p>This code will expire in 10 minutes</p>`,
+      });
 
-    return res
-      .status(400)
-      .json({ success: false, message: "Verification code" });
+      if (info.accepted[0] === existingUser.email) {
+        const hashedCodeValue = hmacProcess(code, HMAC_SECRET);
+        existingUser.forgetPasswordCode = hashedCodeValue;
+        existingUser.forgetPasswordCodeValidation = Date.now();
+        await existingUser.save();
+        return res.status(200).json({
+          success: true,
+          message: "Verification code sent successfully",
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        message: "Failed sending verification code",
+      });
+    }
+    return res.statuss(400).json({
+      success: false,
+      message: "Wrong environment for sending verification code",
+    });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
