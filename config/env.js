@@ -24,5 +24,6 @@ export const {
   POSTS_DB_URI,
   SHORTURLS_DB_URI,
   SUBSCRIPTIONS_DB_URI,
+  NEWSLETTERS_DB_URI,
   DB_NAME,
 } = process.env;

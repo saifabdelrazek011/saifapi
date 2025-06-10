@@ -166,6 +166,27 @@ export const updateShortUrl = async (req, res) => {
   const { shorturlId } = req.params;
 
   try {
+    const { error, value } = createShortUrlSchema.validate({
+      fullUrl,
+      shortUrl,
+    });
+    if (error) {
+      return res.status(400).send(`Validation error: ${error.message}`);
+    }
+    if (!fullUrl) {
+      return res.status(400).send("Full URL is required.");
+    }
+    if (!updaterId) {
+      return res
+        .status(401)
+        .send("Unauthorized: you must be logged in to update a short URL.");
+    }
+    if (!shorturlId) {
+      return res.status(400).send("Short URL ID is required.");
+    }
+    if (!shortUrl) {
+      return res.status(400).send("Short URL is required.");
+    }
     const requestedUrl = await ShortUrl.findById(shorturlId);
 
     const updaterUser = await User.findById(updaterId);

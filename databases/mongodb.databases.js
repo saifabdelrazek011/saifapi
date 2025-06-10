@@ -4,6 +4,7 @@ import {
   POSTS_DB_URI,
   SHORTURLS_DB_URI,
   SUBSCRIPTIONS_DB_URI,
+  NEWSLETTERS_DB_URI,
   DB_NAME,
 } from "../config/env.js";
 
@@ -31,11 +32,19 @@ subscriptionDB.on("error", (err) =>
   console.error("Subscription DB connection error:", err)
 );
 
+const newsletterDB = mongoose.createConnection(NEWSLETTERS_DB_URI, options);
+
+newsletterDB.on("error", (err) =>
+  console.error("Newsletter DB connection error:", err)
+);
+
+// Check if the environment variables are set
 if (
   !USERS_DB_URI ||
   !POSTS_DB_URI ||
   !SHORTURLS_DB_URI ||
-  !SUBSCRIPTIONS_DB_URI
+  !SUBSCRIPTIONS_DB_URI ||
+  !NEWSLETTERS_DB_URI
 ) {
   console.error("Database URIs are not set in the environment variables.");
 }
@@ -43,10 +52,10 @@ if (!DB_NAME) {
   console.error("Database name is not set in the environment variables.");
 }
 
-if (!userDB || !postsDB || !shortUrlDB || !subscriptionDB) {
+if (!userDB || !postsDB || !shortUrlDB || !subscriptionDB || !newsletterDB) {
   console.error("Failed to create database connections.");
 } else {
   console.log("Database connections established successfully.");
 }
 
-export { userDB, postsDB, shortUrlDB, subscriptionDB };
+export { userDB, postsDB, shortUrlDB, subscriptionDB, newsletterDB };
