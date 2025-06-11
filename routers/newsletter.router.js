@@ -5,13 +5,13 @@ import {
   subscribeToNewsletter,
   unsubscribeFromNewsletter,
   sendNewsletter,
-  // AddNewsletterProvider,
+  AddNewsletterProvider,
 } from "../controllers/newsletter.controller.js";
 import { identifier } from "../middlewares/identification.js";
 
 const newsletterRouter = express.Router();
 
-// newsletterRouter.post("/provider", identifier, AddNewsletterProvider);
+newsletterRouter.post("/provider", identifier, AddNewsletterProvider);
 
 newsletterRouter.get("/emails", identifier, getNewsletterSubscribers);
 

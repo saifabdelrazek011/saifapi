@@ -9,3 +9,8 @@ export const newsletterSubscriptionSchema = Joi.object({
     "any.required": "Provider ID is required.",
   }),
 });
+
+export const newsletterProviderSchema = Joi.object({
+  providerName: nameSchema,
+  providerEmail: emailSchema,
+});

@@ -37,8 +37,8 @@ const user = new mongoose.Schema(
           "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character",
       },
     },
-    role: {
-      type: String,
+    roles: {
+      type: [String],
       enum: [
         "user",
         "authAdmin",
@@ -71,6 +71,32 @@ const user = new mongoose.Schema(
       type: Number,
       select: false,
     },
+    newsletterProviderId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "NewsletterProvider",
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+const apiKeySchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    apiKey: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
   },
   {
     timestamps: true,
@@ -78,5 +104,6 @@ const user = new mongoose.Schema(
 );
 
 export const User = userDB.model("User", user);
+export const ApiKey = userDB.model("ApiKey", apiKeySchema);
 
 export default User;

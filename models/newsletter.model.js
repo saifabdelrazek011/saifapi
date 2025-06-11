@@ -1,9 +1,10 @@
 import mongoose from "mongoose";
 import { newsletterDB } from "../databases/mongodb.databases.js";
+import { doHash } from "../utils/hashing.js";
 
 const newsletterProviderSchema = new mongoose.Schema(
   {
-    name: {
+    providerName: {
       type: String,
       required: [true, "Provider name is required"],
       trim: true,
@@ -13,10 +14,6 @@ const newsletterProviderSchema = new mongoose.Schema(
       required: [true, "Provider email is required"],
       unique: true,
       trim: true,
-      match: [
-        /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
-        "Please enter a valid email",
-      ],
     },
     providerEmailVerified: {
       type: Boolean,
@@ -30,9 +27,9 @@ const newsletterProviderSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
-    providerEmailPassword: {
+    providerApiKey: {
       type: String,
-      select: false,
+      unique: true,
     },
   },
   {
@@ -69,7 +66,7 @@ const newsletterSubscriberSchema = new mongoose.Schema(
 );
 
 const NewsletterProvider = newsletterDB.model(
-  "Newsletter",
+  "NewsletterProvider",
   newsletterProviderSchema
 );
 const NewsletterSubscription = newsletterDB.model(
