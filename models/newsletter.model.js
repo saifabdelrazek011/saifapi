@@ -1,26 +1,38 @@
 import mongoose from "mongoose";
 import { newsletterDB } from "../databases/mongodb.databases.js";
 
-const newsletterSchema = new mongoose.Schema(
+const newsletterProviderSchema = new mongoose.Schema(
   {
-    title: {
+    name: {
       type: String,
-      required: [true, "Title is required"],
+      required: [true, "Provider name is required"],
       trim: true,
     },
-    description: {
+    providerEmail: {
       type: String,
-      required: [true, "Description is required"],
+      required: [true, "Provider email is required"],
+      unique: true,
       trim: true,
+      match: [
+        /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
+        "Please enter a valid email",
+      ],
     },
-    imageUrl: {
+    providerEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    providerEmailVerificationCode: {
       type: String,
-      required: [true, "Image URL is required"],
-      trim: true,
+      select: false,
     },
-    publishedAt: {
+    providerEmailVerificationExpires: {
       type: Date,
       default: Date.now,
+    },
+    providerEmailPassword: {
+      type: String,
+      select: false,
     },
   },
   {
@@ -28,7 +40,7 @@ const newsletterSchema = new mongoose.Schema(
   }
 );
 
-const newsletterSubscribtionSchema = new mongoose.Schema(
+const newsletterSubscriberSchema = new mongoose.Schema(
   {
     name: {
       type: String,
@@ -45,8 +57,10 @@ const newsletterSubscribtionSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
-    unsubscribedAt: {
-      type: Date,
+    newsletterIds: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "Newsletter",
+      required: [true, "At least one newsletter ID is required"],
     },
   },
   {
@@ -54,10 +68,13 @@ const newsletterSubscribtionSchema = new mongoose.Schema(
   }
 );
 
-const Newsletter = newsletterDB.model("Newsletter", newsletterSchema);
+const NewsletterProvider = newsletterDB.model(
+  "Newsletter",
+  newsletterProviderSchema
+);
 const NewsletterSubscription = newsletterDB.model(
   "NewsletterSubscription",
-  newsletterSubscribtionSchema
+  newsletterSubscriberSchema
 );
 
-export { Newsletter, NewsletterSubscription };
+export { NewsletterProvider, NewsletterSubscription };
