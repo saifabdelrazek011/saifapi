@@ -66,7 +66,7 @@ export const getMyShortUrls = async (req, res) => {
 export const getAllShortUrls = async (req, res) => {
   const viewerId = req.user.userId;
   try {
-    const viewerUser = await User.findById(viewerId);
+    const viewerUser = await User.findById(viewerId).select("+role");
     if (!viewerUser) {
       return res.status(404).send("You are not registered.");
     }

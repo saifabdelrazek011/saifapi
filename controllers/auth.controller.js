@@ -270,6 +270,7 @@ export const sendVerification = async (req, res) => {
 
     if (NODE_ENV === "development") {
       console.log("Verification Code:", codeValue);
+
       const hashedCodeValue = hmacProcess(codeValue, HMAC_SECRET);
       existingUser.verificationCode = hashedCodeValue;
       existingUser.verificationCodeValidation = Date.now();
@@ -298,7 +299,8 @@ export const sendVerification = async (req, res) => {
         });
       }
     }
-    res
+
+    return res
       .status(400)
       .json({ success: false, message: "Verification code not sent" });
   } catch (error) {
@@ -318,7 +320,8 @@ export const verifyUser = async (req, res) => {
 
     const codeValue = providedCode.toString();
     const existingUser = await User.findOne({ email }).select(
-      "+verificationCode +verificationCodeValidation"
+      "+verificationCode +verificationCodeValidation",
+      { new: true }
     );
 
     console.log(existingUser);
@@ -604,7 +607,7 @@ export const deleteAccount = async (req, res) => {
     if (sureMessage !== SURE_MESSAGE) {
       return res.status(400).json({
         success: false,
-        message: "Please type 'I am sure' to confirm",
+        message: `Please type '${SURE_MESSAGE}' to confirm`,
       });
     }
 
