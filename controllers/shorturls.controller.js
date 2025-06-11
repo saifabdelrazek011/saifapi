@@ -12,7 +12,7 @@ export const getUserShortUrls = async (req, res) => {
     const viewerUser = await User.findById(viewerId);
     if (
       viewerId !== userId &&
-      !viewerUser.role === "admin" &&
+      !viewerUser.role === "shorturlsAdmin" &&
       !viewerUser.role === "superAdmin"
     ) {
       return res
@@ -66,12 +66,12 @@ export const getMyShortUrls = async (req, res) => {
 export const getAllShortUrls = async (req, res) => {
   const viewerId = req.user.userId;
   try {
-    const viewerUser = await User.findById(viewerId).select("+role");
+    const viewerUser = await User.findById(viewerId);
     if (!viewerUser) {
       return res.status(404).send("You are not registered.");
     }
 
-    if (viewerUser.role === "admin" || viewerUser.role === "superAdmin") {
+    if (viewerUser.role === "shorturlsAdmin" || viewerUser.role === "superAdmin") {
       const shortUrls = await ShortUrl.find();
       if (!shortUrls || shortUrls.length === 0) {
         return res.status(404).send("No short URLs found.");
@@ -192,7 +192,7 @@ export const updateShortUrl = async (req, res) => {
     const updaterUser = await User.findById(updaterId);
     if (
       !updaterUser ||
-      (!updaterUser.role === "admin" &&
+      (!updaterUser.role === "shorturlsAdmin" &&
         !updaterUser.role === "superAdmin" &&
         requestedUrl.createdBy.toString() !== updaterId)
     ) {
@@ -242,7 +242,7 @@ export const deleteShortUrl = async (req, res) => {
     const deleterUser = await User.findById(deleterId);
     if (
       !deleterUser ||
-      (!deleterUser.role === "admin" &&
+      (!deleterUser.role === "shorturlsAdmin" &&
         !deleterUser.role === "superAdmin" &&
         requestedUrl.createdBy.toString() !== deleterId)
     ) {

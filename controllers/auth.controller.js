@@ -682,7 +682,7 @@ export const getUser = async (req, res) => {
         .status(400)
         .json({ success: false, message: error.details[0].message });
     }
-    const viewer = await User.findById(viewerId).select("+role");
+    const viewer = await User.findById(viewerId);
 
     if (!viewer) {
       return res
@@ -704,7 +704,7 @@ export const getUser = async (req, res) => {
         message: "User retrieved successfully",
         existingUser,
       });
-    } else if (viewer.role === "admin" || viewer.email === email) {
+    } else if (viewer.role === "authAdmin" || viewer.email === email) {
       const existingUser = await User.findOne({ email }).select(
         "+role +password"
       );
@@ -732,8 +732,8 @@ export const getUser = async (req, res) => {
 export const getAllUsers = async (req, res) => {
   const viewerId = req.user.userId;
   try {
-    const viewUser = await User.findById(viewerId).select("+role");
-    if (viewUser.role === "admin") {
+    const viewUser = await User.findById(viewerId);
+    if (viewUser.role === "authAdmin") {
       const existingUsers = await User.find();
       return res.status(200).json({
         success: true,
@@ -741,7 +741,7 @@ export const getAllUsers = async (req, res) => {
         existingUsers,
       });
     } else if (viewUser.role === "superAdmin") {
-      const existingUsers = await User.find().select("+role +password");
+      const existingUsers = await User.find().select(" +password");
       return res.status(200).json({
         success: true,
         message: "Users retrieved successfully",

@@ -10,7 +10,7 @@ export const getNewsletterSubscribers = async (req, res) => {
     if (
       !viewer ||
       !viewer.role ||
-      (viewer.role !== "admin" && viewer.role !== "superadmin")
+      (viewer.role !== "newsletterAdmin" && viewer.role !== "superAdmin")
     ) {
       return res.status(403).json({
         status: "fail",

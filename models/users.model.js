@@ -39,9 +39,17 @@ const user = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["user", "admin", "superAdmin"],
+      enum: [
+        "user",
+        "authAdmin",
+        "superAdmin",
+        "newsletterProvider",
+        "newsletterAdmin",
+        "shorturlsAdmin",
+        "postsAdmin",
+        "subscriptionAdmin",
+      ],
       default: "user",
-      select: false,
     },
     verified: {
       type: Boolean,
@@ -69,6 +77,6 @@ const user = new mongoose.Schema(
   }
 );
 
-const User = userDB.model("User", user);
+export const User = userDB.model("User", user);
 
 export default User;
