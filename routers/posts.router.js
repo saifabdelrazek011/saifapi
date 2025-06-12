@@ -7,7 +7,7 @@ import {
   deletePost,
   getUserPosts,
 } from "../controllers/posts.controller.js";
-import { identifier } from "../middlewares/identification.js";
+import { identifier } from "../middlewares/identifier.middleware.js";
 
 const postsRouter = express.Router();
 

@@ -7,10 +7,11 @@ import {
   newsletterProviderSchema,
 } from "../middlewares/validators/newsletter.validator.js";
 import { User } from "../models/users.model.js";
-import { createAPIKEY } from "../utils/apikey.js";
-import { doHash } from "../utils/hashing.js";
+import { createAPIKEY, encryptApiKey } from "../utils/apikey.js";
+import { doHash, doHashValidation } from "../utils/hashing.js";
 import { signupSchema } from "../middlewares/validators/auth.validator.js";
 
+// Get all newsletter subscribers (current subscriber for the provider or all subscribers for admin)
 export const getNewsletterSubscribers = async (req, res) => {
   const viewerId = req.user.userId;
   try {
@@ -155,6 +156,7 @@ export const subscribeToNewsletter = async (req, res) => {
   }
 };
 
+// Unsubscribe from a newsletter
 export const unsubscribeFromNewsletter = async (req, res) => {
   const { email, providerId } = req.body;
   try {
@@ -203,6 +205,7 @@ export const unsubscribeFromNewsletter = async (req, res) => {
   }
 };
 
+// Send a newsletter
 export const sendNewsletter = async (req, res) => {
   const { subject, content } = req.body;
   const viewerId = req.user.userId;
@@ -302,17 +305,6 @@ export const AddNewsletterProvider = async (req, res) => {
       });
     }
 
-    // Create an API KEY for the provider
-    const apiKey = await createAPIKEY();
-    const hashedApiKey = await doHash(apiKey);
-
-    if (!hashedApiKey) {
-      return res.status(500).json({
-        status: "error",
-        message: "Failed to create API key.",
-      });
-    }
-
     const hashedProviderPassword = await doHash(providerPassword);
 
     if (!hashedProviderPassword) {
@@ -326,7 +318,6 @@ export const AddNewsletterProvider = async (req, res) => {
       providerName,
       providerEmail,
       providerPassword: hashedProviderPassword,
-      providerApiKey: hashedApiKey,
     });
 
     if (!newProvider.providerName || !newProvider.providerEmail) {
@@ -335,6 +326,8 @@ export const AddNewsletterProvider = async (req, res) => {
         message: "Provider name and email are required.",
       });
     }
+
+    await newProvider.save();
 
     const existingUser = await User.findOne({
       email: newProvider.providerEmail,
@@ -394,6 +387,184 @@ export const AddNewsletterProvider = async (req, res) => {
       message: "Newsletter provider added successfully.",
       data: {
         provider: newProvider,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// Get all newsletter providers
+export const getNewsletterProviders = async (req, res) => {
+  const viewerId = req.user.userId;
+  try {
+    const viewer = await User.findById(viewerId);
+    if (
+      !viewer ||
+      !viewer.roles ||
+      (!viewer.roles.includes("newsletterAdmin") &&
+        !viewer.roles.includes("superAdmin"))
+    ) {
+      return res.status(403).json({
+        status: "fail",
+        message: "You do not have permission to access this resource.",
+      });
+    }
+
+    const providers = await NewsletterProvider.find({});
+
+    if (providers.length === 0) {
+      return res.status(404).json({
+        status: "fail",
+        message: "No newsletter providers found.",
+      });
+    }
+
+    return res.status(200).json({
+      status: "success",
+      data: {
+        providers,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// Delete a newsletter provider
+export const deleteNewsletterProvider = async (req, res) => {
+  const viewerId = req.user.userId;
+  const { providerEmail, providerPassword } = req.body;
+
+  try {
+    const viewer = await User.findById(viewerId);
+
+    if (
+      !viewer ||
+      !viewer.roles ||
+      !viewer.roles.includes("newsletterProvider")
+    ) {
+      return res.status(403).json({
+        status: "fail",
+        message: "You do not have permission to delete a newsletter provider.",
+      });
+    }
+
+    // If the viewer is a newsletter provider, validate their credentials
+
+    if (!providerEmail || !providerPassword) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Provider email and password are required.",
+      });
+    }
+
+    const provider = await NewsletterProvider.findOne({
+      providerEmail,
+    }).select("+providerPassword");
+
+    // Check if the provider exists
+    if (!provider) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Newsletter provider not found.",
+      });
+    }
+
+    const isPasswordValid = await doHashValidation(
+      providerPassword,
+      provider.providerPassword
+    );
+
+    if (!isPasswordValid) {
+      return res.status(403).json({
+        status: "fail",
+        message: "Incorrect password for the provider.",
+      });
+    }
+
+    // Remove the provider from the User model
+    const user = await User.findOne({
+      newsletterProviderId: provider._id,
+    });
+
+    if (user) {
+      user.roles = user.roles.filter((role) => role !== "newsletterProvider");
+      user.newsletterProviderId = null;
+      await user.save();
+    }
+
+    // Delete the provider
+    await NewsletterProvider.deleteOne({ _id: provider._id });
+
+    return res.status(200).json({
+      status: "success",
+      message: "Newsletter provider deleted successfully.",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+export const createProviderApiKey = async (req, res) => {
+  const userId = req.user.userId;
+  try {
+    const user = await User.findById(userId);
+    console.log(user);
+
+    if (!user || !user.roles || !user.roles.includes("newsletterProvider")) {
+      return res.status(403).json({
+        status: "fail",
+        message: "You do not have permission to create an API key.",
+      });
+    }
+
+    const providerId = user.newsletterProviderId;
+    console.log(providerId);
+
+    const provider = await NewsletterProvider.findById(providerId);
+    console.log(provider);
+
+    if (!provider) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Newsletter provider not found.",
+      });
+    }
+
+    // Create a new API key
+    const apiKey = await createAPIKEY();
+    const encryptedApiKey = await encryptApiKey(apiKey);
+    const hashedApiKey = await doHash(apiKey);
+
+    if (!hashedApiKey || !encryptedApiKey) {
+      return res.status(500).json({
+        status: "error",
+        message: "Failed to create API key.",
+      });
+    }
+    const newApiKey = new providerApiKey({
+      providerId: provider._id,
+      encryptedApiKey,
+      hashedApiKey,
+    });
+
+    await newApiKey.save();
+
+    return res.status(200).json({
+      status: "success",
+      message: "API key created successfully.",
+      data: {
+        apiKey,
       },
     });
   } catch (error) {

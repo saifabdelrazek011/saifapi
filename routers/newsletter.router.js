@@ -6,18 +6,59 @@ import {
   unsubscribeFromNewsletter,
   sendNewsletter,
   AddNewsletterProvider,
+  getNewsletterProviders,
+  deleteNewsletterProvider,
+  createProviderApiKey,
 } from "../controllers/newsletter.controller.js";
-import { identifier } from "../middlewares/identification.js";
+import { identifier } from "../middlewares/identifier.middleware.js";
+import {
+  apiKeyNewsletterMiddleware,
+  apiKeyUserMiddleware,
+} from "../middlewares/apikeys.middleware.js";
 
 const newsletterRouter = express.Router();
 
-newsletterRouter.post("/provider", identifier, AddNewsletterProvider);
+newsletterRouter.get(
+  "/providers",
+  identifier,
+  apiKeyNewsletterMiddleware,
+  getNewsletterProviders
+);
 
-newsletterRouter.get("/emails", identifier, getNewsletterSubscribers);
+newsletterRouter.post(
+  "/providers",
+  identifier,
+  apiKeyUserMiddleware,
+  AddNewsletterProvider
+);
 
-newsletterRouter.post("/subscribe", subscribeToNewsletter);
+newsletterRouter.delete(
+  "/providers",
+  identifier,
+  apiKeyNewsletterMiddleware,
+  deleteNewsletterProvider
+);
 
-newsletterRouter.patch("/unsubscribe", unsubscribeFromNewsletter);
+newsletterRouter.get(
+  "/emails",
+  identifier,
+  apiKeyNewsletterMiddleware,
+  getNewsletterSubscribers
+);
+
+newsletterRouter.post(
+  "/subscribe",
+  apiKeyNewsletterMiddleware,
+  subscribeToNewsletter
+);
+
+newsletterRouter.patch(
+  "/unsubscribe",
+  apiKeyNewsletterMiddleware,
+  unsubscribeFromNewsletter
+);
+
+newsletterRouter.patch("/apikey", identifier, createProviderApiKey);
 
 newsletterRouter.post("/send", identifier, sendNewsletter);
 

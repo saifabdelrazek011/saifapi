@@ -14,7 +14,7 @@ import {
   getAllUsers,
 } from "../controllers/auth.controller.js";
 
-import { identifier } from "../middlewares/identification.js";
+import { identifier } from "../middlewares/identifier.middleware.js";
 
 const authRouter = express.Router();
 

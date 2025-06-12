@@ -88,7 +88,12 @@ const apiKeySchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    apiKey: {
+    encryptedApiKey: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    hashedApiKey: {
       type: String,
       required: true,
       unique: true,
@@ -104,6 +109,6 @@ const apiKeySchema = new mongoose.Schema(
 );
 
 export const User = userDB.model("User", user);
-export const ApiKey = userDB.model("ApiKey", apiKeySchema);
+export const userApiKey = userDB.model("ApiKey", apiKeySchema);
 
 export default User;

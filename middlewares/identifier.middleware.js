@@ -10,7 +10,12 @@ export const identifier = (req, res, next) => {
   }
 
   if (!token) {
-    return res.status(403).json({ success: false, message: "Unauthorized" });
+    next({
+      status: 403,
+      success: false,
+      message: "Unauthorized",
+    });
+    return;
   }
 
   try {
@@ -20,7 +25,12 @@ export const identifier = (req, res, next) => {
       req.user = jwtVerified;
       next();
     } else {
-      throw new Error("Error in token verification");
+      next({
+        status: 403,
+        success: false,
+        message: "Unauthorized",
+      });
+      return;
     }
   } catch (error) {
     return res.status(401).json({ success: false, message: "Unauthorized" });

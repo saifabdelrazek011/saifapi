@@ -1,8 +1,5 @@
 import mongoose from "mongoose";
 import { newsletterDB } from "../databases/mongodb.databases.js";
-import { doHash } from "../utils/hashing.js";
-import { createAPIKEY } from "../utils/apikey.js";
-import { HASH_SALT } from "../config/env.js";
 
 const newsletterProviderSchema = new mongoose.Schema(
   {
@@ -56,6 +53,34 @@ const newsletterProviderSchema = new mongoose.Schema(
   }
 );
 
+const providerApiKeySchema = new mongoose.Schema(
+  {
+    providerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "NewsletterProvider",
+      required: [true, "Provider ID is required"],
+    },
+    encryptedApiKey: {
+      type: String,
+      required: [true, "API key is required"],
+      unique: true,
+      trim: true,
+    },
+    hashedApiKey: {
+      type: String,
+      required: [true, "Hashed API key is required"],
+      unique: true,
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
 const newsletterSubscriberSchema = new mongoose.Schema(
   {
     name: {
@@ -93,5 +118,9 @@ const NewsletterSubscription = newsletterDB.model(
   "NewsletterSubscription",
   newsletterSubscriberSchema
 );
+const providerApiKey = newsletterDB.model(
+  "ProviderApiKey",
+  providerApiKeySchema
+);
 
-export { NewsletterProvider, NewsletterSubscription };
+export { NewsletterProvider, NewsletterSubscription, providerApiKey };

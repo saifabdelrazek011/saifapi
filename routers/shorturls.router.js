@@ -8,7 +8,7 @@ import {
   getUserShortUrls,
   getMyShortUrls,
 } from "../controllers/shorturls.controller.js";
-import identifier from "../middlewares/identification.js";
+import identifier from "../middlewares/identifier.middleware.js";
 
 const shortUrlsRouter = express.Router();
 
