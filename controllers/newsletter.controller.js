@@ -7,17 +7,21 @@ import {
   newsletterProviderSchema,
 } from "../middlewares/validators/newsletter.validator.js";
 import { User } from "../models/users.model.js";
+import { createAPIKEY } from "../utils/apikey.js";
+import { doHash } from "../utils/hashing.js";
+import { signupSchema } from "../middlewares/validators/auth.validator.js";
 
 export const getNewsletterSubscribers = async (req, res) => {
   const viewerId = req.user.userId;
   try {
     const viewer = await User.findById(viewerId);
-    console.log("Viewer:", viewer);
+
     if (
       !viewer ||
       !viewer.roles ||
       (!viewer.roles.includes("newsletterAdmin") &&
-        !viewer.roles.includes("superAdmin"))
+        !viewer.roles.includes("superAdmin") &&
+        !viewer.roles.includes("newsletterProvider"))
     ) {
       return res.status(403).json({
         status: "fail",
@@ -29,9 +33,15 @@ export const getNewsletterSubscribers = async (req, res) => {
       ? req.query.fields.split(",").join(" ")
       : "name email subscribedAt";
 
-    const subscribers = await NewsletterSubscription.find({
-      unsubscribedAt: null,
-    }).select(wantedFields);
+    let subscribers;
+
+    if (viewer.roles.includes("newsletterProvider")) {
+      subscribers = await NewsletterSubscription.find({
+        newsletterIds: { $in: viewer.newsletterProviderId },
+      }).select(wantedFields);
+    } else {
+      subscribers = await NewsletterSubscription.find({}).select(wantedFields);
+    }
 
     if (subscribers.length === 0) {
       return res.status(404).json({
@@ -40,26 +50,38 @@ export const getNewsletterSubscribers = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       status: "success",
       data: {
         subscribers,
       },
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       status: "error",
       message: error.message,
     });
   }
 };
 
+// Subscribe to a newsletter
 export const subscribeToNewsletter = async (req, res) => {
   const { name, email, providerId } = req.body;
   try {
+    const { error, value } = newsletterSubscriptionSchema.validate({
+      name,
+      email,
+      providerId,
+    });
+    if (error) {
+      return res.status(400).json({
+        status: "fail",
+        message: error.details[0].message,
+      });
+    }
     const existingSubscription = await NewsletterSubscription.findOne({
       email,
-      unsubscribedAt: null,
+      newsletterIds: { $in: [providerId] },
     });
 
     if (existingSubscription) {
@@ -69,12 +91,19 @@ export const subscribeToNewsletter = async (req, res) => {
       });
     }
 
-    const existingEmail = await NewsletterSubscription.findOne({
-      email,
-    });
+    const existingEmail = await NewsletterSubscription.findOne(
+      {
+        email,
+      },
+      { new: true }
+    );
 
     if (existingEmail) {
-      existingEmail.unsubscribedAt = null; // Reset unsubscribedAt if the email exists
+      if (!Array.isArray(existingEmail.newsletterIds)) {
+        existingEmail.newsletterIds = [];
+      }
+
+      existingEmail.newsletterIds.push(providerId);
 
       await existingEmail.save();
       res.status(200).json({
@@ -127,7 +156,7 @@ export const subscribeToNewsletter = async (req, res) => {
 };
 
 export const unsubscribeFromNewsletter = async (req, res) => {
-  const { email } = req.body;
+  const { email, providerId } = req.body;
   try {
     if (!email) {
       return res.status(400).json({
@@ -138,7 +167,7 @@ export const unsubscribeFromNewsletter = async (req, res) => {
 
     const subscription = await NewsletterSubscription.findOne({
       email,
-      unsubscribedAt: null,
+      newsletterIds: { $in: [providerId] },
     });
 
     if (!subscription) {
@@ -148,7 +177,15 @@ export const unsubscribeFromNewsletter = async (req, res) => {
       });
     }
 
-    subscription.unsubscribedAt = new Date();
+    const index = subscription.newsletterIds.indexOf(providerId);
+
+    if (index === -1) {
+      return res.status(404).json({
+        status: "fail",
+        message: "You are not subscribed to this newsletter.",
+      });
+    }
+    subscription.newsletterIds.splice(index, 1);
     await subscription.save();
 
     res.status(200).json({
@@ -223,28 +260,34 @@ export const sendNewsletter = async (req, res) => {
 
 // Adding A provider to the newsletter
 export const AddNewsletterProvider = async (req, res) => {
-  const { providerName, providerEmail } = req.body;
-  const viewerId = req.user.userId;
+  const { providerName, providerEmail, providerPassword } = req.body;
+  const createrId = req.user.userId;
 
   try {
+    const creater = await User.findById(createrId);
+
+    if (
+      !creater ||
+      !creater.roles ||
+      (!creater.roles.includes("superAdmin") &&
+        !creater.roles.includes("newsletterAdmin"))
+    ) {
+      return res.status(403).json({
+        status: "fail",
+        message: "You do not have permission to add a newsletter provider.",
+      });
+    }
+
     const { error, value } = newsletterProviderSchema.validate({
       providerName,
       providerEmail,
+      providerPassword,
     });
 
     if (error) {
       return res.status(400).json({
         status: "fail",
         message: error.details[0].message,
-      });
-    }
-
-    const viewer = await User.findById(viewerId);
-
-    if (!viewer || !viewer.roles || !viewer.roles.includes("superAdmin")) {
-      return res.status(403).json({
-        status: "fail",
-        message: "You do not have permission to add a newsletter provider.",
       });
     }
 
@@ -259,9 +302,31 @@ export const AddNewsletterProvider = async (req, res) => {
       });
     }
 
+    // Create an API KEY for the provider
+    const apiKey = await createAPIKEY();
+    const hashedApiKey = await doHash(apiKey);
+
+    if (!hashedApiKey) {
+      return res.status(500).json({
+        status: "error",
+        message: "Failed to create API key.",
+      });
+    }
+
+    const hashedProviderPassword = await doHash(providerPassword);
+
+    if (!hashedProviderPassword) {
+      return res.status(500).json({
+        status: "error",
+        message: "Failed to hash provider password.",
+      });
+    }
+
     const newProvider = new NewsletterProvider({
       providerName,
       providerEmail,
+      providerPassword: hashedProviderPassword,
+      providerApiKey: hashedApiKey,
     });
 
     if (!newProvider.providerName || !newProvider.providerEmail) {
@@ -276,26 +341,55 @@ export const AddNewsletterProvider = async (req, res) => {
     });
 
     if (existingUser) {
+      if (existingUser.roles.includes("newsletterProvider")) {
+        return res.status(409).json({
+          status: "fail",
+          message:
+            "This email is already associated with a newsletter provider.",
+        });
+      } else if (existingUser.roles.includes("superAdmin")) {
+        return res.status(403).json({
+          status: "fail",
+          message:
+            "This email is associated with a super admin. Please use a different email.",
+        });
+      }
+
       existingUser.roles.push("newsletterProvider");
+
       existingUser.newsletterProviderId = newProvider._id;
       if (existingUser.verified) {
         newProvider.providerEmailVerified = true;
       }
+
       await existingUser.save();
     } else {
-      const newUser = new User({
-        name: newProvider.providerName,
+      const { error, value } = signupSchema.validate({
+        firstName: newProvider.providerName,
         email: newProvider.providerEmail,
+        password: newProvider.providerPassword,
+      });
+
+      if (error) {
+        return res.status(400).json({
+          status: "fail",
+          message: error.details[0].message,
+        });
+      }
+
+      const newUser = new User({
+        firstName: newProvider.providerName,
+        email: newProvider.providerEmail,
+        password: newProvider.providerPassword,
         roles: ["newsletterProvider"],
         newsletterProviderId: newProvider._id,
+        verified: true,
       });
 
       await newUser.save();
     }
 
-    await newProvider.save();
-
-    res.status(201).json({
+    return res.status(201).json({
       status: "success",
       message: "Newsletter provider added successfully.",
       data: {
@@ -303,7 +397,7 @@ export const AddNewsletterProvider = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       status: "error",
       message: error.message,
     });

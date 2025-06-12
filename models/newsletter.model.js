@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import { newsletterDB } from "../databases/mongodb.databases.js";
 import { doHash } from "../utils/hashing.js";
+import { createAPIKEY } from "../utils/apikey.js";
+import { HASH_SALT } from "../config/env.js";
 
 const newsletterProviderSchema = new mongoose.Schema(
   {
@@ -15,6 +17,22 @@ const newsletterProviderSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+    providerPassword: {
+      type: String,
+      required: [true, "Provider password is required"],
+      minlength: [8, "Password must be at least 8 characters"],
+      select: false,
+      trim: true,
+      validate: {
+        validator: function (value) {
+          return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(
+            value
+          );
+        },
+        message:
+          "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character",
+      },
+    },
     providerEmailVerified: {
       type: Boolean,
       default: false,
@@ -25,11 +43,12 @@ const newsletterProviderSchema = new mongoose.Schema(
     },
     providerEmailVerificationExpires: {
       type: Date,
-      default: Date.now,
+      select: false,
     },
     providerApiKey: {
       type: String,
       unique: true,
+      select: false,
     },
   },
   {
@@ -57,6 +76,7 @@ const newsletterSubscriberSchema = new mongoose.Schema(
     newsletterIds: {
       type: [mongoose.Schema.Types.ObjectId],
       ref: "Newsletter",
+      default: [],
       required: [true, "At least one newsletter ID is required"],
     },
   },

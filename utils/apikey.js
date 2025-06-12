@@ -8,7 +8,7 @@ import {
 // Encryption and Decryption for API Keys
 const algorithm = API_KEY_ENCRYPTION_ALGORITHM;
 const key = API_KEY_ENCRYPTION_SECRET;
-const iv = crypto.randomBytes(API_KEY_ENCRYPTION_IV_LENGTH);
+const iv = crypto.randomBytes(parseInt(API_KEY_ENCRYPTION_IV_LENGTH));
 
 export const createAPIKEY = async () => {
   const apiKey = crypto.randomBytes(32).toString("hex");

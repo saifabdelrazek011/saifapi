@@ -1,5 +1,10 @@
 import Joi from "joi";
 
+export const nameSchema = Joi.string().required().messages({
+  "string.empty": "Name is required.",
+  "any.required": "Name is required.",
+});
+
 export const emailSchema = Joi.string().email().required().messages({
   "string.email": "Invalid email format.",
   "string.empty": "Email is required.",
@@ -20,8 +25,3 @@ export const passwordSchema = Joi.string()
       "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.",
     "string.min": "Password must be at least 8 characters long.",
   });
-
-export const nameSchema = Joi.string().required().messages({
-  "string.empty": "Name is required.",
-  "any.required": "Name is required.",
-});

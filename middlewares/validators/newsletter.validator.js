@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { emailSchema, nameSchema } from "./validator.js";
+import { emailSchema, nameSchema, passwordSchema } from "./validator.js";
 
 export const newsletterSubscriptionSchema = Joi.object({
   name: nameSchema,
@@ -13,4 +13,5 @@ export const newsletterSubscriptionSchema = Joi.object({
 export const newsletterProviderSchema = Joi.object({
   providerName: nameSchema,
   providerEmail: emailSchema,
+  providerPassword: passwordSchema,
 });
