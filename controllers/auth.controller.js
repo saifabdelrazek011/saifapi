@@ -10,7 +10,8 @@ import {
 } from "../middlewares/validators/auth.validator.js";
 import { emailSchema } from "../middlewares/validators/validator.js";
 
-import User from "../models/users.model.js";
+import User, { userApiKey } from "../models/users.model.js";
+
 import transport from "../config/sendMail.js";
 import { doHash, doHashValidation, hmacProcess } from "../utils/hashing.js";
 import {
@@ -27,6 +28,7 @@ import {
   loginNotificationTemplate,
   signupTemplate,
 } from "../utils/email-template.js";
+import { createAPIKEY, encryptApiKey, decryptApiKey } from "../utils/apikey.js";
 
 const getClientIP = (req) => {
   let ip =
@@ -65,6 +67,7 @@ const getLocationFromIP = async (ip) => {
   return "Unknown Location";
 };
 
+// Login functions
 export const signup = async (req, res) => {
   const { firstName, lastName, email, password } = req.body;
   try {
@@ -241,6 +244,7 @@ export const signout = (req, res) => {
   }
 };
 
+//// Verification and Password Management Controllers
 export const sendVerification = async (req, res) => {
   const { email } = req.body;
   try {
@@ -323,8 +327,6 @@ export const verifyUser = async (req, res) => {
       "+verificationCode +verificationCodeValidation",
       { new: true }
     );
-
-    console.log(existingUser);
 
     if (!existingUser) {
       return res
@@ -572,6 +574,70 @@ export const changeForgetedPassword = async (req, res) => {
   }
 };
 
+// User Management Controllers
+export const getMyUserInfo = async (req, res) => {
+  const { userId } = req.user;
+  try {
+    const existingUser = await User.findById(userId).select("+password");
+    if (!existingUser) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User does not exist" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "User retrieved successfully",
+      user: existingUser,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const updateUserInfo = async (req, res) => {
+  const { userId } = req.user;
+  const { firstName, lastName, email } = req.body;
+  try {
+    const { error, value } = updateUserSchema.validate({
+      firstName,
+      lastName,
+      email,
+    });
+    if (error) {
+      return res
+        .status(400)
+        .json({ success: false, message: error.details[0].message });
+    }
+    const existingUser = await User.findOne({ email });
+    if (!existingUser) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User does not exist" });
+    }
+    const compareIds = userId === existingUser._id.toString();
+    if (!compareIds) {
+      return res.status(400).json({
+        success: false,
+        message: "You are not authorized to update this account",
+      });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { firstName, lastName, email },
+      { new: true }
+    );
+    return res.status(200).json({
+      success: true,
+      message: "User updated successfully",
+      updatedUser,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export const deleteAccount = async (req, res) => {
   const { email, password, sureMessage } = req.body;
   const { userId } = req.user;
@@ -629,49 +695,7 @@ export const deleteAccount = async (req, res) => {
   }
 };
 
-export const updateUserInfo = async (req, res) => {
-  const { userId } = req.user;
-  const { firstName, lastName, email } = req.body;
-  try {
-    const { error, value } = updateUserSchema.validate({
-      firstName,
-      lastName,
-      email,
-    });
-    if (error) {
-      return res
-        .status(400)
-        .json({ success: false, message: error.details[0].message });
-    }
-    const existingUser = await User.findOne({ email });
-    if (!existingUser) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User does not exist" });
-    }
-    const compareIds = userId === existingUser._id.toString();
-    if (!compareIds) {
-      return res.status(400).json({
-        success: false,
-        message: "You are not authorized to update this account",
-      });
-    }
-
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      { firstName, lastName, email },
-      { new: true }
-    );
-    return res.status(200).json({
-      success: true,
-      message: "User updated successfully",
-      updatedUser,
-    });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
-  }
-};
-
+// Admin Controllers
 export const getUser = async (req, res) => {
   const viewerId = req.user.userId;
   const { email } = req.body;
@@ -751,5 +775,163 @@ export const getAllUsers = async (req, res) => {
     }
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Handling Users API Keys
+export const createUserApiKey = async (req, res) => {
+  const { userId } = req.user;
+  if (!userId) {
+    return res.status(401).json({
+      status: "error",
+      message: "Unauthorized user",
+    });
+  }
+  try {
+    const apiKey = await createAPIKEY();
+    const encryptedApiKey = await encryptApiKey(apiKey);
+    const hashedApiKey = await doHash(apiKey);
+
+    console.log("API Key:", apiKey);
+    console.log("Encrypted API Key:", encryptedApiKey);
+    console.log("Hashed API Key:", hashedApiKey);
+
+    if (!apiKey) {
+      return res.status(500).json({
+        status: "error",
+        message: "Failed to create API key",
+      });
+    }
+
+    if (!hashedApiKey || !encryptedApiKey) {
+      return res.status(500).json({
+        status: "error",
+        message: "Failed to hash or encrypt API key",
+      });
+    }
+    const existingApiKey = await userApiKey.findOne({ userId });
+
+    if (existingApiKey) {
+      return res.status(400).json({
+        status: "error",
+        message: "You could only have one API key",
+      });
+    }
+
+    const newApiKey = new userApiKey({
+      userId,
+      encryptedApiKey,
+      hashedApiKey,
+    });
+
+    await newApiKey.save();
+
+    res.status(201).json({
+      status: "success",
+      message: "API key created successfully",
+      apiKey: apiKey,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+export const getMyApiKey = async (req, res) => {
+  const { userId } = req.user;
+  try {
+    const existingApiKey = await userApiKey.findOne({ userId });
+    if (!existingApiKey) {
+      return res.status(404).json({
+        status: "error",
+        message: "API key not found",
+      });
+    }
+
+    const decryptedApiKey = await decryptApiKey(existingApiKey.encryptedApiKey);
+
+    if (!decryptedApiKey) {
+      return res.status(500).json({
+        status: "error",
+        message: "Failed to decrypt API key",
+      });
+    }
+
+    res.status(200).json({
+      status: "success",
+      message: "API key retrieved successfully",
+      apiKey: decryptedApiKey,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+export const deleteMyApiKey = async (req, res) => {
+  const { userId } = req.user;
+  try {
+    const existingApiKey = await userApiKey.findOne({ userId });
+    if (!existingApiKey) {
+      return res.status(404).json({
+        status: "error",
+        message: "API key not found",
+      });
+    }
+    await userApiKey.deleteOne({ userId });
+    res.status(200).json({
+      status: "success",
+      message: "API key deleted successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+export const updateMyApiKey = async (req, res) => {
+  const { userId } = req.user;
+  try {
+    const existingApiKey = await userApiKey.findOne({ userId });
+    if (!existingApiKey) {
+      return res.status(404).json({
+        status: "error",
+        message: "API key not found",
+      });
+    }
+    const newApiKey = await createAPIKEY();
+    const encryptedApiKey = await encryptApiKey(newApiKey);
+    const hashedApiKey = await doHash(newApiKey);
+    if (!newApiKey) {
+      return res.status(500).json({
+        status: "error",
+        message: "Failed to create new API key",
+      });
+    }
+    if (!hashedApiKey || !encryptedApiKey) {
+      return res.status(500).json({
+        status: "error",
+        message: "Failed to hash or encrypt new API key",
+      });
+    }
+    existingApiKey.encryptedApiKey = encryptedApiKey;
+    existingApiKey.hashedApiKey = hashedApiKey;
+    await existingApiKey.save();
+    res.status(200).json({
+      status: "success",
+      message: "API key updated successfully",
+      apiKey: newApiKey,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
   }
 };

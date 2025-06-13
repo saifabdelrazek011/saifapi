@@ -9,6 +9,8 @@ import {
   getNewsletterProviders,
   deleteNewsletterProvider,
   createProviderApiKey,
+  changeProviderApiKey,
+  deleteProviderApiKey,
 } from "../controllers/newsletter.controller.js";
 import { identifier } from "../middlewares/identifier.middleware.js";
 import {
@@ -21,7 +23,7 @@ const newsletterRouter = express.Router();
 newsletterRouter.get(
   "/providers",
   identifier,
-  apiKeyNewsletterMiddleware,
+  apiKeyUserMiddleware,
   getNewsletterProviders
 );
 
@@ -35,14 +37,14 @@ newsletterRouter.post(
 newsletterRouter.delete(
   "/providers",
   identifier,
-  apiKeyNewsletterMiddleware,
+  apiKeyUserMiddleware,
   deleteNewsletterProvider
 );
 
 newsletterRouter.get(
   "/emails",
   identifier,
-  apiKeyNewsletterMiddleware,
+  apiKeyUserMiddleware,
   getNewsletterSubscribers
 );
 
@@ -58,8 +60,32 @@ newsletterRouter.patch(
   unsubscribeFromNewsletter
 );
 
-newsletterRouter.patch("/apikey", identifier, createProviderApiKey);
+newsletterRouter.post(
+  "/apikey",
+  identifier,
+  apiKeyUserMiddleware,
+  createProviderApiKey
+);
 
-newsletterRouter.post("/send", identifier, sendNewsletter);
+newsletterRouter.patch(
+  "/apikey",
+  identifier,
+  apiKeyUserMiddleware,
+  changeProviderApiKey
+);
+
+newsletterRouter.delete(
+  "/apikey",
+  identifier,
+  apiKeyUserMiddleware,
+  deleteProviderApiKey
+);
+
+newsletterRouter.post(
+  "/send",
+  identifier,
+  apiKeyUserMiddleware,
+  sendNewsletter
+);
 
 export default newsletterRouter;

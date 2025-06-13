@@ -12,38 +12,54 @@ import {
   updateUserInfo,
   getUser,
   getAllUsers,
+  getMyUserInfo,
+  createUserApiKey,
+  getMyApiKey,
+  updateMyApiKey,
+  deleteMyApiKey,
 } from "../controllers/auth.controller.js";
 
 import { identifier } from "../middlewares/identifier.middleware.js";
 
 const authRouter = express.Router();
 
-authRouter.get("/", (req, res) =>
-  res.render("auth-view", { title: "Authentication" })
-);
-
+// Authentication routes
 authRouter.post("/signup", signup);
 
 authRouter.post("/signin", signin);
 
 authRouter.post("/signout", identifier, signout);
 
+// Verification routes
 authRouter.patch("/verification/send", identifier, sendVerification);
 
 authRouter.patch("/verification/verify", identifier, verifyUser);
 
+// Password routes
 authRouter.patch("/password", identifier, changePassword);
 
 authRouter.patch("/password/forget", sendForgotPasswordCode);
 
 authRouter.patch("/password/reset", changeForgetedPassword);
 
-authRouter.delete("/users/one", identifier, deleteAccount);
+// Users routes
+authRouter.get("/users", identifier, getAllUsers);
 
-authRouter.patch("/users/one", identifier, updateUserInfo);
+authRouter.get("/users/me", identifier, getMyUserInfo);
 
 authRouter.get("/users/one", identifier, getUser);
 
-authRouter.get("/users/all", identifier, getAllUsers);
+authRouter.patch("/users/one", identifier, updateUserInfo);
+
+authRouter.delete("/users/one", identifier, deleteAccount);
+
+// API Key routes
+authRouter.get("/apikey", identifier, getMyApiKey);
+
+authRouter.post("/apikey", identifier, createUserApiKey);
+
+authRouter.patch("/apikey", identifier, updateMyApiKey);
+
+authRouter.delete("/apikey", identifier, deleteMyApiKey);
 
 export default authRouter;

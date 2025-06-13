@@ -51,12 +51,6 @@ const providerApiKeySchema = new mongoose.Schema(
       ref: "NewsletterProvider",
       required: [true, "Provider ID is required"],
     },
-    encryptedApiKey: {
-      type: String,
-      required: [true, "API key is required"],
-      unique: true,
-      trim: true,
-    },
     hashedApiKey: {
       type: String,
       required: [true, "Hashed API key is required"],

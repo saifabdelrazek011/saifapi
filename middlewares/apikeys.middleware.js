@@ -1,9 +1,6 @@
-import {
-  NewsletterProvider,
-  providerApiKey,
-} from "../models/newsletter.model.js";
+import { providerApiKey } from "../models/newsletter.model.js";
 import User, { userApiKey } from "../models/users.model.js";
-import { doHash } from "../utils/hashing.js";
+import { doHash, doHashValidation } from "../utils/hashing.js";
 
 // Authenticate newsletter providers via API keys.
 export const apiKeyNewsletterMiddleware = async (req, res, next) => {
@@ -14,29 +11,31 @@ export const apiKeyNewsletterMiddleware = async (req, res, next) => {
 
   const apiKey =
     req.headers["x-api-key"] || req.query.apiKey || req.body.apiKey;
+
   if (!apiKey) {
     return res
       .status(403)
       .json({ success: false, message: "API key is required" });
   }
-  const hashedApiKey = doHash(apiKey);
-  if (!hashedApiKey) {
+
+  const apikeys = await providerApiKey.find({});
+  let matchedApiKey = null;
+
+  for (const apikey of apikeys) {
+    if (await doHashValidation(apiKey, apikey.hashedApiKey)) {
+      matchedApiKey = apikey;
+      break;
+    }
+  }
+
+  if (!matchedApiKey) {
     return res
       .status(403)
       .json({ success: false, message: "Error hashing API key" });
   }
 
-  if (!provider) {
-    return res.status(403).json({ success: false, message: "Invalid API key" });
-  }
+  req.user = matchedApiKey;
 
-  const apikey = await providerApiKey.findOne({ hashedApiKey });
-
-  if (!apikey) {
-    return res.status(403).json({ success: false, message: "Invalid API key" });
-  }
-
-  req.user = apikey;
   next();
 };
 
@@ -59,7 +58,7 @@ export const apiKeyUserMiddleware = async (req, res, next) => {
     return;
   }
 
-  const hashedApiKey = doHash(apiKey);
+  const hashedApiKey = await doHash(apiKey);
 
   if (!hashedApiKey) {
     next({
@@ -70,7 +69,7 @@ export const apiKeyUserMiddleware = async (req, res, next) => {
     return;
   }
 
-  const apikey = userApiKey.findOne({ hashedApiKey });
+  const apikey = await userApiKey.findOne({ hashedApiKey });
 
   if (!apikey) {
     next({
