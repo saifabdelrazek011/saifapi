@@ -327,13 +327,13 @@ export const AddNewsletterProvider = async (req, res) => {
       });
     }
 
-    await newProvider.save();
-
     const existingUser = await User.findOne({
       email: newProvider.providerEmail,
     });
 
+    // If the user already exists, add the newsletterProvider role
     if (existingUser) {
+      // Check if the user already has the newsletterProvider role
       if (existingUser.roles.includes("newsletterProvider")) {
         return res.status(409).json({
           status: "fail",
@@ -381,6 +381,9 @@ export const AddNewsletterProvider = async (req, res) => {
 
       await newUser.save();
     }
+
+    // Save the new provider
+    await newProvider.save();
 
     return res.status(201).json({
       status: "success",
@@ -477,6 +480,14 @@ export const deleteNewsletterProvider = async (req, res) => {
       });
     }
 
+    // Check if the viewer is the owner of the provider account
+    if (viewer.newsletterProviderId != provider._id.toString()) {
+      return res.status(403).json({
+        status: "fail",
+        message: "You can only delete your own newsletter provider account.",
+      });
+    }
+
     const isPasswordValid = await doHashValidation(
       providerPassword,
       provider.providerPassword
@@ -519,7 +530,6 @@ export const createProviderApiKey = async (req, res) => {
   const userId = req.user.userId;
   try {
     const user = await User.findById(userId);
-    console.log(user);
 
     if (!user || !user.roles || !user.roles.includes("newsletterProvider")) {
       return res.status(403).json({
@@ -529,10 +539,8 @@ export const createProviderApiKey = async (req, res) => {
     }
 
     const providerId = user.newsletterProviderId;
-    console.log(providerId);
 
     const provider = await NewsletterProvider.findById(providerId);
-    console.log(provider);
 
     if (!provider) {
       return res.status(404).json({
