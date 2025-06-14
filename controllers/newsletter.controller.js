@@ -9,7 +9,7 @@ import {
 } from "../middlewares/validators/newsletter.validator.js";
 import { User } from "../models/users.model.js";
 import { createAPIKEY, encryptApiKey } from "../utils/apikey.js";
-import { doHash, doHashValidation } from "../utils/hashing.js";
+import { doHash, doHashValidation, hmacProcess } from "../utils/hashing.js";
 import { signupSchema } from "../middlewares/validators/auth.validator.js";
 
 // Subscription controller for newsletters
@@ -179,6 +179,54 @@ export const unsubscribeFromNewsletter = async (req, res) => {
   }
 };
 
+/*
+export const updateNewsletterSubscription = async (req, res) => {
+  const { email, name } = req.body;
+  const { userId } = req.user;
+  try {
+    if (!email || !name) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Email and name are required.",
+      });
+    }
+    if (!userId) {
+      return res.status(400).json({
+        status: "fail",
+        message: "User ID is required.",
+      });
+    }
+
+    const subscription = await NewsletterSubscription.findOne({
+      email,
+    });
+
+    if (!subscription) {
+      return res.status(404).json({
+        status: "fail",
+        message: "No active subscription found for this email.",
+      });
+    }
+
+    subscription.name = name;
+    await subscription.save();
+
+    return res.status(200).json({
+      status: "success",
+      message: "Successfully updated the newsletter subscription.",
+      data: {
+        subscription,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+*/
+
 // Provider controllers
 export const getCurrentNewsletterProvider = async (req, res) => {
   const viewerId = req.user.userId;
@@ -289,17 +337,30 @@ export const AddNewsletterProvider = async (req, res) => {
     // If the user already exists, add the newsletterProvider role
     if (existingUser) {
       // Check if the user already has the newsletterProvider role
+      if (
+        existingUser.roles.includes("superAdmin") ||
+        existingUser.roles.includes("newsletterAdmin")
+      ) {
+        return res.status(403).json({
+          status: "fail",
+          message:
+            "This email is associated with a super admin or newsletter admin. Please use a different email.",
+        });
+      }
+
       if (existingUser.roles.includes("newsletterProvider")) {
         return res.status(409).json({
           status: "fail",
           message:
             "This email is already associated with a newsletter provider.",
         });
-      } else if (existingUser.roles.includes("superAdmin")) {
+      }
+
+      if (existingUser.roles.includes("newsletterProviderWorker")) {
         return res.status(403).json({
           status: "fail",
           message:
-            "This email is associated with a super admin. Please use a different email.",
+            "This email is associated with a newsletter provider worker. Please use a different email.",
         });
       }
 
@@ -414,16 +475,20 @@ export const deleteNewsletterProvider = async (req, res) => {
       });
     }
 
-    // Remove the provider from the User model
-    const user = await User.findOne({
+    // Remove the provider and workers from the User model
+    const userProviders = await User.find({
       newsletterProviderId: provider._id,
+      roles: { $in: ["newsletterProvider", "newsletterProviderWorker"] },
     });
 
-    if (user) {
-      user.roles = user.roles.filter((role) => role !== "newsletterProvider");
+    userProviders.forEach(async (user) => {
+      user.roles = user.roles.filter(
+        (role) =>
+          role !== "newsletterProvider" && role !== "newsletterProviderWorker"
+      );
       user.newsletterProviderId = null;
       await user.save();
-    }
+    });
 
     // Delete the provider
     await NewsletterProvider.deleteOne({ _id: provider._id });
@@ -451,7 +516,8 @@ export const getNewsletterSubscribers = async (req, res) => {
       !viewer.roles ||
       (!viewer.roles.includes("newsletterAdmin") &&
         !viewer.roles.includes("superAdmin") &&
-        !viewer.roles.includes("newsletterProvider"))
+        !viewer.roles.includes("newsletterProvider") &&
+        !viewer.roles.includes("newsletterProviderWorker"))
     ) {
       return res.status(403).json({
         status: "fail",
@@ -465,7 +531,16 @@ export const getNewsletterSubscribers = async (req, res) => {
 
     let subscribers;
 
-    if (viewer.roles.includes("newsletterProvider")) {
+    if (
+      viewer.roles.includes("newsletterProvider") ||
+      viewer.roles.includes("newsletterProviderWorker")
+    ) {
+      if (!viewer.newsletterProviderId) {
+        return res.status(400).json({
+          status: "fail",
+          message: "You do not have a newsletter provider ID.",
+        });
+      }
       subscribers = await NewsletterSubscription.find({
         newsletterIds: { $in: viewer.newsletterProviderId },
       }).select(wantedFields);
@@ -533,10 +608,8 @@ export const getNewsletterProviders = async (req, res) => {
   }
 };
 
-export const sendNewsletter = async (req, res) => {
-  const { subject, content } = req.body;
+export const getNewsletterProviderWorkers = async (req, res) => {
   const viewerId = req.user.userId;
-
   try {
     const viewer = await User.findById(viewerId);
     if (
@@ -546,42 +619,41 @@ export const sendNewsletter = async (req, res) => {
     ) {
       return res.status(403).json({
         status: "fail",
-        message: "You do not have permission to send newsletters.",
+        message: "You do not have permission to access this resource.",
       });
     }
 
-    if (!subject || !content) {
+    if (!viewer.newsletterProviderId) {
       return res.status(400).json({
         status: "fail",
-        message: "Subject and content are required.",
+        message: "You do not have a newsletter provider ID.",
       });
     }
 
-    const subscribers = await NewsletterSubscription.find({
-      providerId: viewerId,
-      unsubscribedAt: null,
-    });
+    const provider = await NewsletterProvider.findById(
+      viewer.newsletterProviderId
+    );
 
-    if (subscribers.length === 0) {
+    if (!provider) {
       return res.status(404).json({
         status: "fail",
-        message: "No active subscribers found.",
+        message: "Newsletter provider not found.",
       });
     }
 
-    // Sending the newsletter logic
+    const workers = await User.find({
+      newsletterProviderId: provider._id,
+      roles: { $in: ["newsletterProviderWorker"] },
+    });
 
-    res.status(200).json({
+    return res.status(200).json({
       status: "success",
-      message: "Newsletter sent successfully.",
       data: {
-        subject,
-        content,
-        recipientsCount: subscribers.length,
+        workers,
       },
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       status: "error",
       message: error.message,
     });
@@ -625,6 +697,7 @@ export const createProviderApiKey = async (req, res) => {
 
     // Create a new API key
     const apiKey = await createAPIKEY();
+    const lookupHash = await hmacProcess(apiKey);
     const hashedApiKey = await doHash(apiKey);
 
     if (!hashedApiKey) {
@@ -636,6 +709,7 @@ export const createProviderApiKey = async (req, res) => {
 
     const newApiKey = new providerApiKey({
       providerId: provider._id,
+      lookupHash,
       hashedApiKey,
     });
 
@@ -755,6 +829,329 @@ export const deleteProviderApiKey = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+// Setting Users as providers Controllers
+export const setUserAsProvider = async (req, res) => {
+  const providerId = req.user.newsletterProviderId;
+  const { email, password } = req.body;
+
+  try {
+    const { error, value } = setUserAsProviderSchema.validate({
+      email,
+      providerId: providerId?.toString(),
+    });
+
+    if (error) {
+      return res.status(400).json({
+        status: "fail",
+        message: error.details[0].message,
+      });
+    }
+
+    const provider = await NewsletterProvider.findById(providerId);
+    if (!provider) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Newsletter provider not found.",
+      });
+    }
+
+    const isPasswordValid = await doHashValidation(
+      password,
+      provider.providerPassword
+    );
+    if (!isPasswordValid) {
+      return res.status(403).json({
+        status: "fail",
+        message: "Incorrect password for the provider.",
+      });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      throw new Error("User not found.");
+    }
+
+    // Check if the user already has the newsletterProvider role
+    if (user.roles.includes("newsletterProvider")) {
+      return res
+        .status(400)
+        .json({ status: "fail", message: "User is already a provider." });
+    }
+
+    user.roles.push("newsletterProvider");
+    user.newsletterProviderId = providerId;
+    await user.save();
+
+    return res.status(200).json({
+      status: "success",
+      message: "User set as provider successfully.",
+    });
+  } catch (error) {
+    return res.status(500).json({ status: "error", message: error.message });
+  }
+};
+
+export const removeUserAsProvider = async (req, res) => {
+  const providerId = req.user.newsletterProviderId;
+  const { email, password } = req.body;
+
+  try {
+    const { error, value } = setUserAsProviderSchema.validate({
+      email,
+      providerId: providerId?.toString(),
+    });
+
+    if (error) {
+      return res.status(400).json({
+        status: "fail",
+        message: error.details[0].message,
+      });
+    }
+
+    const provider = await NewsletterProvider.findById(providerId);
+    if (!provider) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Newsletter provider not found.",
+      });
+    }
+
+    const isPasswordValid = await doHashValidation(
+      password,
+      provider.providerPassword
+    );
+    if (!isPasswordValid) {
+      return res.status(403).json({
+        status: "fail",
+        message: "Incorrect password for the provider.",
+      });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      throw new Error("User not found.");
+    }
+
+    // Check if the user is a newsletterProvider
+    if (!user.roles.includes("newsletterProvider")) {
+      return res
+        .status(400)
+        .json({ status: "fail", message: "User is not a provider." });
+    }
+
+    const isUserTheMainProvider = provider.email === user.email;
+    if (isUserTheMainProvider) {
+      return res.status(403).json({
+        status: "fail",
+        message: "You cannot remove the main provider.",
+      });
+    }
+
+    user.roles = user.roles.filter((role) => role !== "newsletterProvider");
+    user.newsletterProviderId = null;
+    await user.save();
+
+    return res.status(200).json({
+      status: "success",
+      message: "User removed as provider successfully.",
+    });
+  } catch (error) {
+    return res.status(500).json({ status: "error", message: error.message });
+  }
+};
+
+// Setting User as Provider Worker Controllers
+export const setUserAsProviderWorker = async (req, res) => {
+  const providerId = req.user.newsletterProviderId;
+  const { email, password } = req.body;
+
+  try {
+    const { error, value } = setUserAsProviderSchema.validate({
+      email,
+      providerId: providerId?.toString(),
+    });
+    if (error) {
+      return res.status(400).json({
+        status: "fail",
+        message: error.details[0].message,
+      });
+    }
+
+    const provider = await NewsletterProvider.findById(providerId);
+    if (!provider) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Newsletter provider not found.",
+      });
+    }
+
+    const isPasswordValid = await doHashValidation(
+      password,
+      provider.providerPassword
+    );
+    if (!isPasswordValid) {
+      return res.status(403).json({
+        status: "fail",
+        message: "Incorrect password for the provider.",
+      });
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      throw new Error("User not found.");
+    }
+
+    // Check if the user is a newsletterProvider
+    if (user.roles.includes("newsletterProvider")) {
+      return res.status(400).json({
+        status: "fail",
+        message: "User is a provider.",
+      });
+    }
+
+    // Check if the user already has the newsletterProviderWorker role
+    if (user.roles.includes("newsletterProviderWorker")) {
+      return res.status(400).json({
+        status: "fail",
+        message: "User is already a provider worker.",
+      });
+    }
+
+    user.roles.push("newsletterProviderWorker");
+    user.newsletterProviderId = providerId;
+    await user.save();
+
+    return res.status(200).json({
+      status: "success",
+      message: "User set as provider worker successfully.",
+    });
+  } catch (error) {
+    return res.status(500).json({ status: "error", message: error.message });
+  }
+};
+
+export const removeUserAsProviderWorker = async (req, res) => {
+  const providerId = req.user.newsletterProviderId;
+  const { email, password } = req.body;
+
+  try {
+    const { error, value } = setUserAsProviderSchema.validate({
+      email,
+      providerId: providerId?.toString(),
+    });
+
+    if (error) {
+      return res.status(400).json({
+        status: "fail",
+        message: error.details[0].message,
+      });
+    }
+
+    const provider = await NewsletterProvider.findById(providerId);
+    if (!provider) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Newsletter provider not found.",
+      });
+    }
+
+    const isPasswordValid = await doHashValidation(
+      password,
+      provider.providerPassword
+    );
+    if (!isPasswordValid) {
+      return res.status(403).json({
+        status: "fail",
+        message: "Incorrect password for the provider.",
+      });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      throw new Error("User not found.");
+    }
+
+    // Check if the user is a newsletterProviderWorker
+    if (!user.roles.includes("newsletterProviderWorker")) {
+      return res.status(400).json({
+        status: "fail",
+        message: "User is not a provider worker.",
+      });
+    }
+
+    user.roles = user.roles.filter(
+      (role) => role !== "newsletterProviderWorker"
+    );
+    user.newsletterProviderId = null;
+    await user.save();
+
+    return res.status(200).json({
+      status: "success",
+      message: "User removed as provider worker successfully.",
+    });
+  } catch (error) {
+    return res.status(500).json({ status: "error", message: error.message });
+  }
+};
+
+// Sending newsletters
+export const sendNewsletter = async (req, res) => {
+  const { subject, content } = req.body;
+  const viewerId = req.user.userId;
+
+  try {
+    const viewer = await User.findById(viewerId);
+    if (
+      !viewer ||
+      !viewer.roles ||
+      !viewer.roles.includes("newsletterProvider")
+    ) {
+      return res.status(403).json({
+        status: "fail",
+        message: "You do not have permission to send newsletters.",
+      });
+    }
+
+    if (!subject || !content) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Subject and content are required.",
+      });
+    }
+
+    const subscribers = await NewsletterSubscription.find({
+      providerId: viewerId,
+      unsubscribedAt: null,
+    });
+
+    if (subscribers.length === 0) {
+      return res.status(404).json({
+        status: "fail",
+        message: "No active subscribers found.",
+      });
+    }
+
+    // Sending the newsletter logic
+
+    res.status(200).json({
+      status: "success",
+      message: "Newsletter sent successfully.",
+      data: {
+        subject,
+        content,
+        recipientsCount: subscribers.length,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
       status: "error",
       message: error.message,
     });

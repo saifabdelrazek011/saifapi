@@ -275,7 +275,7 @@ export const sendVerification = async (req, res) => {
     if (NODE_ENV === "development") {
       console.log("Verification Code:", codeValue);
 
-      const hashedCodeValue = hmacProcess(codeValue, HMAC_SECRET);
+      const hashedCodeValue = hmacProcess(codeValue);
       existingUser.verificationCode = hashedCodeValue;
       existingUser.verificationCodeValidation = Date.now();
       await existingUser.save();
@@ -293,7 +293,7 @@ export const sendVerification = async (req, res) => {
       });
 
       if (info.accepted[0] === existingUser.email) {
-        const hashedCodeValue = hmacProcess(codeValue, HMAC_SECRET);
+        const hashedCodeValue = hmacProcess(codeValue);
         existingUser.verificationCode = hashedCodeValue;
         existingUser.verificationCodeValidation = Date.now();
         await existingUser.save();
@@ -355,7 +355,7 @@ export const verifyUser = async (req, res) => {
         .json({ success: false, message: "Verification code expired" });
     }
 
-    const hashedCodeValue = hmacProcess(codeValue, HMAC_SECRET);
+    const hashedCodeValue = hmacProcess(codeValue);
 
     if (hashedCodeValue === existingUser.verificationCode) {
       existingUser.verified = true;
@@ -454,7 +454,7 @@ export const sendForgotPasswordCode = async (req, res) => {
 
     if (NODE_ENV === "development") {
       console.log("Forgot Password Code:", code);
-      const hashedCodeValue = hmacProcess(code, HMAC_SECRET);
+      const hashedCodeValue = hmacProcess(code);
       existingUser.forgetPasswordCode = hashedCodeValue;
       existingUser.forgetPasswordCodeValidation = Date.now();
       await existingUser.save();
@@ -472,7 +472,7 @@ export const sendForgotPasswordCode = async (req, res) => {
       });
 
       if (info.accepted[0] === existingUser.email) {
-        const hashedCodeValue = hmacProcess(code, HMAC_SECRET);
+        const hashedCodeValue = hmacProcess(code);
         existingUser.forgetPasswordCode = hashedCodeValue;
         existingUser.forgetPasswordCodeValidation = Date.now();
         await existingUser.save();
@@ -538,7 +538,7 @@ export const changeForgetedPassword = async (req, res) => {
       });
     }
 
-    const hashedCodeValue = await hmacProcess(providedCode, HMAC_SECRET);
+    const hashedCodeValue = await hmacProcess(providedCode);
 
     if (hashedCodeValue !== existingUser.forgetPasswordCode) {
       return res
@@ -578,6 +578,12 @@ export const changeForgetedPassword = async (req, res) => {
 export const getMyUserInfo = async (req, res) => {
   const { userId } = req.user;
   try {
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized user",
+      });
+    }
     const existingUser = await User.findById(userId).select("+password");
     if (!existingUser) {
       return res
@@ -789,12 +795,9 @@ export const createUserApiKey = async (req, res) => {
   }
   try {
     const apiKey = await createAPIKEY();
+    const lookupHash = await hmacProcess(apiKey);
     const encryptedApiKey = await encryptApiKey(apiKey);
     const hashedApiKey = await doHash(apiKey);
-
-    console.log("API Key:", apiKey);
-    console.log("Encrypted API Key:", encryptedApiKey);
-    console.log("Hashed API Key:", hashedApiKey);
 
     if (!apiKey) {
       return res.status(500).json({
@@ -803,7 +806,7 @@ export const createUserApiKey = async (req, res) => {
       });
     }
 
-    if (!hashedApiKey || !encryptedApiKey) {
+    if (!hashedApiKey || !encryptedApiKey || !lookupHash) {
       return res.status(500).json({
         status: "error",
         message: "Failed to hash or encrypt API key",
@@ -820,6 +823,7 @@ export const createUserApiKey = async (req, res) => {
 
     const newApiKey = new userApiKey({
       userId,
+      lookupHash,
       encryptedApiKey,
       hashedApiKey,
     });

@@ -25,3 +25,8 @@ export const passwordSchema = Joi.string()
       "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.",
     "string.min": "Password must be at least 8 characters long.",
   });
+
+export const idSchema = Joi.string().required().messages({
+  "string.empty": "ID is required.",
+  "any.required": "ID is required.",
+});

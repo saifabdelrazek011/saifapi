@@ -1,6 +1,35 @@
 import mongoose from "mongoose";
 import { newsletterDB } from "../databases/mongodb.databases.js";
 
+const newsletterSubscriberSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, "Name is required"],
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: [true, "Email is required"],
+      unique: true,
+      trim: true,
+    },
+    subscribedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    newsletterIds: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "Newsletter",
+      default: [],
+      required: [true, "At least one newsletter ID is required"],
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
 const newsletterProviderSchema = new mongoose.Schema(
   {
     providerName: {
@@ -33,11 +62,6 @@ const newsletterProviderSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
-    providerApiKey: {
-      type: String,
-      unique: true,
-      select: false,
-    },
   },
   {
     timestamps: true,
@@ -50,6 +74,11 @@ const providerApiKeySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "NewsletterProvider",
       required: [true, "Provider ID is required"],
+    },
+    lookupHash: {
+      type: String,
+      required: [true, "Lookup hash is required"],
+      unique: true,
     },
     hashedApiKey: {
       type: String,
@@ -66,46 +95,17 @@ const providerApiKeySchema = new mongoose.Schema(
   }
 );
 
-const newsletterSubscriberSchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: [true, "Name is required"],
-      trim: true,
-    },
-    email: {
-      type: String,
-      required: [true, "Email is required"],
-      unique: true,
-      trim: true,
-    },
-    subscribedAt: {
-      type: Date,
-      default: Date.now,
-    },
-    newsletterIds: {
-      type: [mongoose.Schema.Types.ObjectId],
-      ref: "Newsletter",
-      default: [],
-      required: [true, "At least one newsletter ID is required"],
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
-
-const NewsletterProvider = newsletterDB.model(
-  "NewsletterProvider",
-  newsletterProviderSchema
-);
 const NewsletterSubscription = newsletterDB.model(
   "NewsletterSubscription",
   newsletterSubscriberSchema
+);
+const NewsletterProvider = newsletterDB.model(
+  "NewsletterProvider",
+  newsletterProviderSchema
 );
 const providerApiKey = newsletterDB.model(
   "ProviderApiKey",
   providerApiKeySchema
 );
 
-export { NewsletterProvider, NewsletterSubscription, providerApiKey };
+export { NewsletterSubscription, NewsletterProvider, providerApiKey };

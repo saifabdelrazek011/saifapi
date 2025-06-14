@@ -1,6 +1,6 @@
 import { providerApiKey } from "../models/newsletter.model.js";
-import User, { userApiKey } from "../models/users.model.js";
-import { doHash, doHashValidation } from "../utils/hashing.js";
+import { userApiKey } from "../models/users.model.js";
+import { hmacProcess } from "../utils/hashing.js";
 
 // Authenticate newsletter providers via API keys.
 export const apiKeyNewsletterMiddleware = async (req, res, next) => {
@@ -18,23 +18,18 @@ export const apiKeyNewsletterMiddleware = async (req, res, next) => {
       .json({ success: false, message: "API key is required" });
   }
 
-  const apikeys = await providerApiKey.find({});
-  let matchedApiKey = null;
-
-  for (const apikey of apikeys) {
-    if (await doHashValidation(apiKey, apikey.hashedApiKey)) {
-      matchedApiKey = apikey;
-      break;
-    }
-  }
-
-  if (!matchedApiKey) {
+  const lookupHash = hmacProcess(apiKey);
+  if (!lookupHash) {
     return res
       .status(403)
-      .json({ success: false, message: "Error hashing API key" });
+      .json({ success: false, message: "Error processing API key" });
+  }
+  const apikeyData = await providerApiKey.findOne({ lookupHash });
+  if (!apikeyData) {
+    return res.status(403).json({ success: false, message: "Invalid API key" });
   }
 
-  req.user = matchedApiKey;
+  req.user = apikeyData;
 
   next();
 };
@@ -58,20 +53,22 @@ export const apiKeyUserMiddleware = async (req, res, next) => {
     return;
   }
 
-  const hashedApiKey = await doHash(apiKey);
+  const lookupHash = hmacProcess(apiKey);
 
-  if (!hashedApiKey) {
-    next({
-      status: 403,
-      success: false,
-      message: "Error hashing API key",
-    });
-    return;
+  if (!lookupHash) {
+    return res
+      .status(403)
+      .json({ success: false, message: "Error processing API key" });
   }
 
-  const apikey = await userApiKey.findOne({ hashedApiKey });
+  const apikeyData = await userApiKey.findOne({ lookupHash });
+  if (!apikeyData) {
+    return res.status(403).json({ success: false, message: "Invalid API key" });
+  }
 
-  if (!apikey) {
+  req.user = apikeyData;
+
+  if (!apikeyData) {
     next({
       status: 403,
       success: false,
@@ -80,7 +77,6 @@ export const apiKeyUserMiddleware = async (req, res, next) => {
     return;
   }
 
-  const user = await User.findById(apikey.userId);
-  req.user = user;
+  req.user = apikeyData;
   next();
 };

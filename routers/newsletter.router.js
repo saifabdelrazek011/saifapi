@@ -11,6 +11,11 @@ import {
   createProviderApiKey,
   changeProviderApiKey,
   deleteProviderApiKey,
+  setUserAsProvider,
+  removeUserAsProvider,
+  setUserAsProviderWorker,
+  removeUserAsProviderWorker,
+  getNewsletterProviderWorkers,
 } from "../controllers/newsletter.controller.js";
 import { identifier } from "../middlewares/identifier.middleware.js";
 import {
@@ -20,6 +25,20 @@ import {
 
 const newsletterRouter = express.Router();
 
+// Subscribe and unsubscribe Controller
+newsletterRouter.post(
+  "/subscribe",
+  apiKeyNewsletterMiddleware,
+  subscribeToNewsletter
+);
+
+newsletterRouter.patch(
+  "/unsubscribe",
+  apiKeyNewsletterMiddleware,
+  unsubscribeFromNewsletter
+);
+
+// Newsletter Providers Controller
 newsletterRouter.get(
   "/providers",
   identifier,
@@ -41,6 +60,36 @@ newsletterRouter.delete(
   deleteNewsletterProvider
 );
 
+// Set and remove user as provider and worker
+newsletterRouter.patch(
+  "/providers/set",
+  identifier,
+  apiKeyUserMiddleware,
+  setUserAsProvider
+);
+
+newsletterRouter.patch(
+  "/providers/remove",
+  identifier,
+  apiKeyUserMiddleware,
+  removeUserAsProvider
+);
+
+newsletterRouter.patch(
+  "/providers/workers/set",
+  identifier,
+  apiKeyUserMiddleware,
+  setUserAsProviderWorker
+);
+
+newsletterRouter.patch(
+  "/providers/workers/remove",
+  identifier,
+  apiKeyUserMiddleware,
+  removeUserAsProviderWorker
+);
+
+// Admins and providers routes
 newsletterRouter.get(
   "/emails",
   identifier,
@@ -48,18 +97,14 @@ newsletterRouter.get(
   getNewsletterSubscribers
 );
 
-newsletterRouter.post(
-  "/subscribe",
-  apiKeyNewsletterMiddleware,
-  subscribeToNewsletter
+newsletterRouter.get(
+  "/providers/workers",
+  identifier,
+  apiKeyUserMiddleware,
+  getNewsletterProviderWorkers
 );
 
-newsletterRouter.patch(
-  "/unsubscribe",
-  apiKeyNewsletterMiddleware,
-  unsubscribeFromNewsletter
-);
-
+// ApiKey routes
 newsletterRouter.post(
   "/apikey",
   identifier,
@@ -81,6 +126,7 @@ newsletterRouter.delete(
   deleteProviderApiKey
 );
 
+// Send Newsletter
 newsletterRouter.post(
   "/send",
   identifier,
