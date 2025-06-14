@@ -3,10 +3,11 @@ import { newsletterDB } from "../databases/mongodb.databases.js";
 
 const newsletterSubscriberSchema = new mongoose.Schema(
   {
-    name: {
-      type: String,
-      required: [true, "Name is required"],
-      trim: true,
+    names: {
+      type: Map,
+      of: String,
+      required: true,
+      default: {},
     },
     email: {
       type: String,
@@ -47,6 +48,27 @@ const newsletterProviderSchema = new mongoose.Schema(
       type: String,
       required: [true, "Provider password is required"],
       minlength: [8, "Password must be at least 8 characters"],
+      select: false,
+      trim: true,
+    },
+    senderName: {
+      type: String,
+      required: [true, "Sender name is required"],
+      trim: true,
+    },
+    emailServiceName: {
+      type: String,
+      required: [true, "Email service name is required"],
+      trim: true,
+    },
+    emailServiceAddress: {
+      type: String,
+      required: [true, "Email service address is required"],
+      trim: true,
+    },
+    emailServicePassword: {
+      type: String,
+      required: [true, "Email service password is required"],
       select: false,
       trim: true,
     },

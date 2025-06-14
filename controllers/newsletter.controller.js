@@ -6,14 +6,25 @@ import {
 import {
   newsletterSubscriptionSchema,
   newsletterProviderSchema,
+  setEmailServiceDetailsSchema,
+  setUserAsProviderSchema,
+  sendNewsletterSchema,
 } from "../middlewares/validators/newsletter.validator.js";
 import { User } from "../models/users.model.js";
-import { createAPIKEY, encryptApiKey } from "../utils/apikey.js";
-import { doHash, doHashValidation, hmacProcess } from "../utils/hashing.js";
+import { createAPIKEY } from "../utils/apikey.js";
+import {
+  doHash,
+  doHashValidation,
+  encryptEmailPassword,
+  decryptEmailPassword,
+  hmacProcess,
+} from "../utils/hashing.js";
 import { signupSchema } from "../middlewares/validators/auth.validator.js";
+import { newsletterSend } from "../config/sendMail.js";
 
 // Subscription controller for newsletters
 export const subscribeToNewsletter = async (req, res) => {
+  u;
   const { name, email } = req.body;
   const { providerId } = req.user;
 
@@ -65,22 +76,46 @@ export const subscribeToNewsletter = async (req, res) => {
       { new: true }
     );
 
+    // If user is already subscribed to a different newsletter
     if (existingEmail) {
       if (!Array.isArray(existingEmail.newsletterIds)) {
-        existingEmail.newsletterIds = [];
+        const newsletterIds = existingEmail.newsletterIds;
+        existingEmail.newsletterIds = Array.isArray(newsletterIds)
+          ? newsletterIds
+          : [newsletterIds];
       }
 
-      existingEmail.newsletterIds.push(providerId);
+      if (!existingEmail.newsletterIds.includes(providerId)) {
+        if (!existingEmail.newsletterIds) {
+          existingEmail.newsletterIds = [];
+        }
 
-      await existingEmail.save();
-      res.status(200).json({
-        status: "success",
-        message: "Successfully re-subscribed to the newsletter.",
-        data: {
-          subscription: existingEmail,
-        },
-      });
-    } else {
+        if (!existingEmail.names) {
+          existingEmail.names = new Map();
+          // If migrating from old 'name' field:
+          if (existingEmail.name) {
+            const userCurrentName = existingEmail.name;
+            existingEmail.name = null;
+            existingEmail.newsletterIds.forEach((id) => {
+              existingEmail.names.set(id, userCurrentName);
+            });
+          }
+        }
+
+        existingEmail.names.set(providerId, name);
+
+        existingEmail.newsletterIds.push(providerId);
+
+        await existingEmail.save();
+        res.status(200).json({
+          status: "success",
+          message: "Successfully re-subscribed to the newsletter.",
+          data: {
+            subscription: existingEmail,
+          },
+        });
+      }
+
       const { error, value } = newsletterSubscriptionSchema.validate({
         email,
         name,
@@ -94,26 +129,52 @@ export const subscribeToNewsletter = async (req, res) => {
         });
       }
 
-      if (!name || !email) {
-        return res.status(400).json({
-          status: "fail",
-          message: "Name and email are required.",
-        });
-      }
-
-      const newSubscription = new NewsletterSubscription({
-        name,
-        email,
-      });
-      await newSubscription.save();
-      res.status(201).json({
+      return res.status(200).json({
         status: "success",
-        message: "Successfully subscribed to the newsletter.",
+        message: "You are already subscribed to this newsletter.",
         data: {
-          subscription: newSubscription,
+          subscription: existingEmail,
         },
       });
     }
+
+    // If users is not already subscribed, create a new subscription
+    const newSubscription = new NewsletterSubscription({
+      names: new Map([[providerId, name]]),
+      email,
+      newsletterIds: [providerId],
+    });
+
+    if (!newSubscription.names || newSubscription.names.size === 0) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Name and email are required.",
+      });
+    }
+
+    if (
+      !newSubscription.newsletterIds ||
+      newSubscription.newsletterIds.length === 0
+    ) {
+      return res.status(400).json({
+        status: "fail",
+        message: "At least one newsletter ID is required.",
+      });
+    }
+
+    if (!Array.isArray(newSubscription.newsletterIds)) {
+      newSubscription.newsletterIds = [newSubscription.newsletterIds];
+    }
+
+    await newSubscription.save();
+
+    return res.status(201).json({
+      status: "success",
+      message: "Successfully subscribed to the newsletter.",
+      data: {
+        subscription: newSubscription,
+      },
+    });
   } catch (error) {
     res.status(500).json({
       status: "error",
@@ -139,10 +200,13 @@ export const unsubscribeFromNewsletter = async (req, res) => {
       });
     }
 
-    const subscription = await NewsletterSubscription.findOne({
-      email,
-      newsletterIds: { $in: [providerId] },
-    });
+    const subscription = await NewsletterSubscription.findOne(
+      {
+        email,
+        newsletterIds: { $in: [providerId] },
+      },
+      { new: true }
+    );
 
     if (!subscription) {
       return res.status(404).json({
@@ -161,6 +225,7 @@ export const unsubscribeFromNewsletter = async (req, res) => {
     }
 
     subscription.newsletterIds.splice(index, 1);
+    subscription.names.delete(providerId);
 
     await subscription.save();
 
@@ -179,10 +244,9 @@ export const unsubscribeFromNewsletter = async (req, res) => {
   }
 };
 
-/*
-export const updateNewsletterSubscription = async (req, res) => {
+export const updateNewsletterSubscriptionName = async (req, res) => {
   const { email, name } = req.body;
-  const { userId } = req.user;
+  const { providerId } = req.user;
   try {
     if (!email || !name) {
       return res.status(400).json({
@@ -190,16 +254,20 @@ export const updateNewsletterSubscription = async (req, res) => {
         message: "Email and name are required.",
       });
     }
-    if (!userId) {
+    if (!providerId) {
       return res.status(400).json({
         status: "fail",
-        message: "User ID is required.",
+        message: "Provider ID is required.",
       });
     }
 
-    const subscription = await NewsletterSubscription.findOne({
-      email,
-    });
+    const subscription = await NewsletterSubscription.findOne(
+      {
+        email,
+        newsletterIds: { $in: [providerId] },
+      },
+      { new: true }
+    );
 
     if (!subscription) {
       return res.status(404).json({
@@ -208,7 +276,29 @@ export const updateNewsletterSubscription = async (req, res) => {
       });
     }
 
-    subscription.name = name;
+    subscription.names.delete(providerId);
+    subscription.names.set(providerId, name);
+
+    if (!subscription.names || subscription.names.size === 0) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Name and email are required.",
+      });
+    }
+    if (
+      !subscription.newsletterIds ||
+      subscription.newsletterIds.length === 0
+    ) {
+      return res.status(400).json({
+        status: "fail",
+        message: "At least one newsletter ID is required.",
+      });
+    }
+
+    if (!Array.isArray(subscription.newsletterIds)) {
+      subscription.newsletterIds = [subscription.newsletterIds];
+    }
+
     await subscription.save();
 
     return res.status(200).json({
@@ -225,7 +315,6 @@ export const updateNewsletterSubscription = async (req, res) => {
     });
   }
 };
-*/
 
 // Provider controllers
 export const getCurrentNewsletterProvider = async (req, res) => {
@@ -1102,17 +1191,144 @@ export const removeUserAsProviderWorker = async (req, res) => {
   }
 };
 
-// Sending newsletters
-export const sendNewsletter = async (req, res) => {
-  const { subject, content } = req.body;
+// Sending newsletters Controllers
+export const setEmailServiceDetails = async (req, res) => {
+  const {
+    senderName,
+    emailServiceAddress,
+    emailServicePassword,
+    emailServiceName,
+    providerPassword,
+  } = req.body;
+
   const viewerId = req.user.userId;
 
   try {
+    const { error, value } = setEmailServiceDetailsSchema.validate({
+      senderName,
+      emailServiceAddress,
+      emailServicePassword,
+      emailServiceName,
+      viewerId: viewerId?.toString(),
+      providerPassword,
+    });
+
+    if (error) {
+      return res.status(400).json({
+        status: "fail",
+        message: error.details[0].message,
+      });
+    }
+
     const viewer = await User.findById(viewerId);
     if (
       !viewer ||
       !viewer.roles ||
       !viewer.roles.includes("newsletterProvider")
+    ) {
+      return res.status(403).json({
+        status: "fail",
+        message: "You do not have permission to set email service details.",
+      });
+    }
+
+    const providerId = viewer.newsletterProviderId;
+    if (!providerId) {
+      return res.status(400).json({
+        status: "fail",
+        message: "You do not have a newsletter provider ID.",
+      });
+    }
+
+    const provider = await NewsletterProvider.findById(providerId).select(
+      "+providerPassword"
+    );
+    if (!provider) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Newsletter provider not found.",
+      });
+    }
+
+    const isPasswordValid = await doHashValidation(
+      providerPassword,
+      provider.providerPassword
+    );
+    if (!isPasswordValid) {
+      return res.status(403).json({
+        status: "fail",
+        message: "Incorrect password for the provider.",
+      });
+    }
+    if (
+      !senderName ||
+      !emailServiceAddress ||
+      !emailServicePassword ||
+      !emailServiceName
+    ) {
+      return res.status(400).json({
+        status: "fail",
+        message: "All fields are required.",
+      });
+    }
+
+    const encryptedEmailServicePassword = await encryptEmailPassword(
+      emailServicePassword,
+      providerPassword
+    );
+    if (!encryptedEmailServicePassword) {
+      return res.status(500).json({
+        status: "error",
+        message: "Failed to encrypt email service password.",
+      });
+    }
+
+    provider.senderName = senderName;
+    provider.emailServiceAddress = emailServiceAddress;
+    provider.emailServiceName = emailServiceName;
+    provider.emailServicePassword = encryptedEmailServicePassword;
+
+    await provider.save();
+
+    return res.status(200).json({
+      status: "success",
+      message: "Email service details set successfully.",
+      data: {
+        provider,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+};
+
+export const sendNewsletter = async (req, res) => {
+  const { senderName, subject, content, providerPassword } = req.body;
+  const senderId = req.user.userId;
+  try {
+    const { error, value } = sendNewsletterSchema.validate({
+      senderName,
+      subject,
+      content,
+      providerPassword,
+      senderId: senderId?.toString(),
+    });
+    if (error) {
+      return res.status(400).json({
+        status: "fail",
+        message: error.details[0].message,
+      });
+    }
+    const sender = await User.findById(senderId);
+
+    if (
+      !sender ||
+      !sender.roles ||
+      (!sender.roles.includes("newsletterProvider") &&
+        !sender.roles.includes("newsletterProviderWorker"))
     ) {
       return res.status(403).json({
         status: "fail",
@@ -1127,28 +1343,77 @@ export const sendNewsletter = async (req, res) => {
       });
     }
 
+    const providerId = sender.newsletterProviderId;
+    if (!providerId) {
+      return res.status(400).json({
+        status: "fail",
+        message: "You do not have a newsletter provider ID.",
+      });
+    }
+
+    const provider = await NewsletterProvider.findById(providerId).select(
+      "+emailServicePassword"
+    );
+    if (!provider) {
+      return res.status(404).json({
+        status: "fail",
+        message: "Newsletter provider not found.",
+      });
+    }
+
+    if (
+      !provider.emailServiceAddress ||
+      !provider.emailServicePassword ||
+      !provider.emailServiceName
+    ) {
+      return res.status(400).json({
+        status: "fail",
+        message:
+          "Provider email service details are not set. Please set them up before sending newsletters.",
+      });
+    }
+
     const subscribers = await NewsletterSubscription.find({
-      providerId: viewerId,
-      unsubscribedAt: null,
+      newsletterIds: { $in: [providerId] },
     });
 
     if (subscribers.length === 0) {
       return res.status(404).json({
         status: "fail",
-        message: "No active subscribers found.",
+        message: "No subscribers found for this newsletter provider.",
       });
     }
 
-    // Sending the newsletter logic
+    const decryptedEmailServicePassword = await decryptEmailPassword(
+      provider.emailServicePassword,
+      providerPassword
+    );
 
-    res.status(200).json({
+    const newsletterPromises = await subscribers.map((subscriber) =>
+      newsletterSend(
+        senderName ? senderName : provider.senderName,
+        provider.emailServiceAddress,
+        subscriber.email,
+        decryptedEmailServicePassword,
+        provider.emailServiceName,
+        subject,
+        content
+      )
+    );
+
+    if (newsletterPromises.length === 0) {
+      return res.status(404).json({
+        status: "fail",
+        message:
+          "There are problems with the newsletter service configuration.",
+      });
+    }
+
+    await Promise.all(newsletterPromises);
+
+    return res.status(200).json({
       status: "success",
       message: "Newsletter sent successfully.",
-      data: {
-        subject,
-        content,
-        recipientsCount: subscribers.length,
-      },
     });
   } catch (error) {
     res.status(500).json({

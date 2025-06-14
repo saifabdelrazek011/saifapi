@@ -16,6 +16,8 @@ import {
   setUserAsProviderWorker,
   removeUserAsProviderWorker,
   getNewsletterProviderWorkers,
+  updateNewsletterSubscriptionName,
+  setEmailServiceDetails,
 } from "../controllers/newsletter.controller.js";
 import { identifier } from "../middlewares/identifier.middleware.js";
 import {
@@ -36,6 +38,12 @@ newsletterRouter.patch(
   "/unsubscribe",
   apiKeyNewsletterMiddleware,
   unsubscribeFromNewsletter
+);
+
+newsletterRouter.patch(
+  "/subscribe",
+  apiKeyNewsletterMiddleware,
+  updateNewsletterSubscriptionName
 );
 
 // Newsletter Providers Controller
@@ -132,6 +140,13 @@ newsletterRouter.post(
   identifier,
   apiKeyUserMiddleware,
   sendNewsletter
+);
+
+newsletterRouter.post(
+  "/send/details",
+  identifier,
+  apiKeyUserMiddleware,
+  setEmailServiceDetails
 );
 
 export default newsletterRouter;
