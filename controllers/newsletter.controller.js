@@ -926,12 +926,32 @@ export const deleteProviderApiKey = async (req, res) => {
 
 // Setting Users as providers Controllers
 export const setUserAsProvider = async (req, res) => {
-  const providerId = req.user.newsletterProviderId;
-  const { email, password } = req.body;
+  const { email, providerPassword } = req.body;
+  const viewerId = req.user.userId;
 
   try {
+    const viewer = await User.findById(viewerId);
+    if (
+      !viewer ||
+      !viewer.roles ||
+      !viewer.roles.includes("newsletterProvider")
+    ) {
+      return res.status(403).json({
+        status: "fail",
+        message: "You do not have permission to set a user as a provider.",
+      });
+    }
+    const providerId = viewer.newsletterProviderId;
+    if (!providerId) {
+      return res.status(400).json({
+        status: "fail",
+        message: "You do not have a newsletter provider ID.",
+      });
+    }
+
     const { error, value } = setUserAsProviderSchema.validate({
       email,
+      providerPassword,
       providerId: providerId?.toString(),
     });
 
@@ -942,7 +962,9 @@ export const setUserAsProvider = async (req, res) => {
       });
     }
 
-    const provider = await NewsletterProvider.findById(providerId);
+    const provider = await NewsletterProvider.findById(providerId).select(
+      "+providerPassword"
+    );
     if (!provider) {
       return res.status(404).json({
         status: "fail",
@@ -951,13 +973,13 @@ export const setUserAsProvider = async (req, res) => {
     }
 
     const isPasswordValid = await doHashValidation(
-      password,
+      providerPassword,
       provider.providerPassword
     );
     if (!isPasswordValid) {
       return res.status(403).json({
         status: "fail",
-        message: "Incorrect password for the provider.",
+        message: "Incorrect providerPassword for the provider.",
       });
     }
 
@@ -988,12 +1010,32 @@ export const setUserAsProvider = async (req, res) => {
 };
 
 export const removeUserAsProvider = async (req, res) => {
-  const providerId = req.user.newsletterProviderId;
-  const { email, password } = req.body;
+  const viewerId = req.user.userId;
+  const { email, providerPassword } = req.body;
 
   try {
+    const viewer = await User.findById(viewerId);
+    if (
+      !viewer ||
+      !viewer.roles ||
+      !viewer.roles.includes("newsletterProvider")
+    ) {
+      return res.status(403).json({
+        status: "fail",
+        message: "You do not have permission to set a user as a provider.",
+      });
+    }
+    const providerId = viewer.newsletterProviderId;
+    if (!providerId) {
+      return res.status(400).json({
+        status: "fail",
+        message: "You do not have a newsletter provider ID.",
+      });
+    }
+
     const { error, value } = setUserAsProviderSchema.validate({
       email,
+      providerPassword,
       providerId: providerId?.toString(),
     });
 
@@ -1004,7 +1046,9 @@ export const removeUserAsProvider = async (req, res) => {
       });
     }
 
-    const provider = await NewsletterProvider.findById(providerId);
+    const provider = await NewsletterProvider.findById(providerId).select(
+      "+providerPassword"
+    );
     if (!provider) {
       return res.status(404).json({
         status: "fail",
@@ -1013,13 +1057,14 @@ export const removeUserAsProvider = async (req, res) => {
     }
 
     const isPasswordValid = await doHashValidation(
-      password,
+      providerPassword,
       provider.providerPassword
     );
+
     if (!isPasswordValid) {
       return res.status(403).json({
         status: "fail",
-        message: "Incorrect password for the provider.",
+        message: "Incorrect providerPassword for the provider.",
       });
     }
 
@@ -1058,12 +1103,32 @@ export const removeUserAsProvider = async (req, res) => {
 
 // Setting User as Provider Worker Controllers
 export const setUserAsProviderWorker = async (req, res) => {
-  const providerId = req.user.newsletterProviderId;
-  const { email, password } = req.body;
+  const viewerId = req.user.userId;
+  const { email, providerPassword } = req.body;
 
   try {
+    const viewer = await User.findById(viewerId);
+    if (
+      !viewer ||
+      !viewer.roles ||
+      !viewer.roles.includes("newsletterProvider")
+    ) {
+      return res.status(403).json({
+        status: "fail",
+        message: "You do not have permission to set a user as a provider.",
+      });
+    }
+    const providerId = viewer.newsletterProviderId;
+    if (!providerId) {
+      return res.status(400).json({
+        status: "fail",
+        message: "You do not have a newsletter provider ID.",
+      });
+    }
+
     const { error, value } = setUserAsProviderSchema.validate({
       email,
+      providerPassword,
       providerId: providerId?.toString(),
     });
     if (error) {
@@ -1073,7 +1138,9 @@ export const setUserAsProviderWorker = async (req, res) => {
       });
     }
 
-    const provider = await NewsletterProvider.findById(providerId);
+    const provider = await NewsletterProvider.findById(providerId).select(
+      "+providerPassword"
+    );
     if (!provider) {
       return res.status(404).json({
         status: "fail",
@@ -1082,13 +1149,13 @@ export const setUserAsProviderWorker = async (req, res) => {
     }
 
     const isPasswordValid = await doHashValidation(
-      password,
+      providerPassword,
       provider.providerPassword
     );
     if (!isPasswordValid) {
       return res.status(403).json({
         status: "fail",
-        message: "Incorrect password for the provider.",
+        message: "Incorrect providerPassword for the provider.",
       });
     }
 
@@ -1128,12 +1195,33 @@ export const setUserAsProviderWorker = async (req, res) => {
 };
 
 export const removeUserAsProviderWorker = async (req, res) => {
-  const providerId = req.user.newsletterProviderId;
-  const { email, password } = req.body;
+  const viewerId = req.user.userId;
+  const { email, providerPassword } = req.body;
 
   try {
+    const viewer = await User.findById(viewerId);
+    if (
+      !viewer ||
+      !viewer.roles ||
+      !viewer.roles.includes("newsletterProvider")
+    ) {
+      return res.status(403).json({
+        status: "fail",
+        message: "You do not have permission to set a user as a provider.",
+      });
+    }
+
+    const providerId = viewer.newsletterProviderId;
+    if (!providerId) {
+      return res.status(400).json({
+        status: "fail",
+        message: "You do not have a newsletter provider ID.",
+      });
+    }
+
     const { error, value } = setUserAsProviderSchema.validate({
       email,
+      providerPassword,
       providerId: providerId?.toString(),
     });
 
@@ -1144,7 +1232,9 @@ export const removeUserAsProviderWorker = async (req, res) => {
       });
     }
 
-    const provider = await NewsletterProvider.findById(providerId);
+    const provider = await NewsletterProvider.findById(providerId).select(
+      "+providerPassword"
+    );
     if (!provider) {
       return res.status(404).json({
         status: "fail",
@@ -1153,13 +1243,13 @@ export const removeUserAsProviderWorker = async (req, res) => {
     }
 
     const isPasswordValid = await doHashValidation(
-      password,
+      providerPassword,
       provider.providerPassword
     );
     if (!isPasswordValid) {
       return res.status(403).json({
         status: "fail",
-        message: "Incorrect password for the provider.",
+        message: "Incorrect providerPassword for the provider.",
       });
     }
 
@@ -1257,7 +1347,7 @@ export const setEmailServiceDetails = async (req, res) => {
     if (!isPasswordValid) {
       return res.status(403).json({
         status: "fail",
-        message: "Incorrect password for the provider.",
+        message: "Incorrect providerPassword for the provider.",
       });
     }
     if (
@@ -1279,7 +1369,7 @@ export const setEmailServiceDetails = async (req, res) => {
     if (!encryptedEmailServicePassword) {
       return res.status(500).json({
         status: "error",
-        message: "Failed to encrypt email service password.",
+        message: "Failed to encrypt email service providerPassword.",
       });
     }
 

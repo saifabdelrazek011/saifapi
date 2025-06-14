@@ -20,6 +20,7 @@ export const newsletterProviderSchema = Joi.object({
 
 export const setUserAsProviderSchema = Joi.object({
   email: emailSchema,
+  providerPassword: passwordSchema,
   providerId: idSchema,
 });
 
