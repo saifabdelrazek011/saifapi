@@ -15,19 +15,26 @@ import newsletterRouter from "./routers/newsletter.router.js";
 
 // Import middlewares
 import arcjetMiddleware from "./middlewares/arcjet.middleware.js";
-import { PORT } from "./config/env.js";
+import { NODE_ENV, PORT } from "./config/env.js";
 
 dotenv.config();
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin:
+      NODE_ENV === "production"
+        ? "https://your-production-domain.com"
+        : "http://localhost:5173",
+    credentials: true,
+  })
+);
+// Security headers
 app.use(helmet());
 app.use(express.json());
 app.use(cookieParser());
-app.use(express.urlencoded({ extended: true }));
 app.set("trust proxy", true);
 app.use(methodOverride("_method"));
-app.use(express.urlencoded({ extended: false }));
 
 app.set("view engine", "ejs");
 
@@ -44,6 +51,7 @@ app.get("/", (req, res) => {
 app.use((req, res) => {
   res.status(404).render("404-view", { title: "404 Not Found" });
 });
+
 app.listen(PORT || 3000, () => {
-  console.log("Server is running on port " + PORT || 3000);
+  console.log("Server is running on port " + (PORT || 3000));
 });
