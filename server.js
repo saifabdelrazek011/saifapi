@@ -24,8 +24,30 @@ app.use(
   cors({
     origin:
       NODE_ENV === "production"
-        ? "https://your-production-domain.com"
-        : "http://localhost:5173",
+        ? (origin, callback) => {
+            // Allow requests with no origin (like mobile apps or curl)
+            if (!origin) return callback(null, true);
+
+            // Regex to match your domain and all subdomains
+            const allowed = /\.?saifabdelrazek\.com$/;
+            if (allowed.test(new URL(origin).hostname)) {
+              return callback(null, true);
+            }
+            callback(new Error("Not allowed by CORS"));
+          }
+        : (origin, callback) => {
+            // Allow all localhost origins in development
+            if (!origin) return callback(null, true);
+            try {
+              const { hostname } = new URL(origin);
+              if (hostname === "localhost" || hostname === "127.0.0.1") {
+                return callback(null, true);
+              }
+            } catch (e) {
+              // Invalid origin, reject
+            }
+            callback(new Error("Not allowed by CORS"));
+          },
     credentials: true,
   })
 );
