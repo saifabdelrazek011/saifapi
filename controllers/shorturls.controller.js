@@ -178,13 +178,13 @@ export const useShortUrl = async (req, res) => {
   try {
     const shortUrl = await ShortUrl.findOne({ short: req.params.shorturl });
     if (!shortUrl) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Short URL not found." });
+      res.redirect("/v1/shorturls/to/404");
+      return;
     }
     shortUrl.clicks++;
     await shortUrl.save();
     res.redirect(shortUrl.full);
+    return;
   } catch (error) {
     console.error("Error fetching short URL:", error);
     res.status(500).json({ success: false, message: "Internal Server Error" });
