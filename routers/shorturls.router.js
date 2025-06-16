@@ -23,4 +23,11 @@ shortUrlsRouter.patch("/:shorturlId", identifier, updateShortUrl);
 shortUrlsRouter.delete("/:shorturlId", identifier, deleteShortUrl);
 shortUrlsRouter.get("/user/:userId", identifier, getUserShortUrls);
 
+shortUrlsRouter.get("/test", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Short URLs router is working fine.",
+  });
+});
+
 export default shortUrlsRouter;

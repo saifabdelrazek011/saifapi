@@ -15,12 +15,18 @@ export const signupSchema = Joi.object({
 
 export const signinSchema = Joi.object({
   email: emailSchema,
-  password: passwordSchema,
+  password: Joi.string().required().messages({
+    "string.empty": "Password is required.",
+    "any.required": "Password is required.",
+  }),
 });
 
 export const deleteAccountSchema = Joi.object({
   email: emailSchema,
-  password: passwordSchema,
+  password: Joi.string().required().messages({
+    "string.empty": "Password is required.",
+    "any.required": "Password is required.",
+  }),
   sureMessage: Joi.string().required().valid(SURE_MESSAGE).trim().messages({
     "string.empty": "Sure message is required.",
     "any.required": "Sure message is required.",

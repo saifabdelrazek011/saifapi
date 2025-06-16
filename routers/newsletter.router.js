@@ -149,4 +149,11 @@ newsletterRouter.post(
   setEmailServiceDetails
 );
 
+newsletterRouter.get("/test", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Newsletter router is working fine.",
+  });
+});
+
 export default newsletterRouter;

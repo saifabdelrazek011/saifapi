@@ -62,4 +62,11 @@ authRouter.patch("/apikey", identifier, updateMyApiKey);
 
 authRouter.delete("/apikey", identifier, deleteMyApiKey);
 
+authRouter.get("/test", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Auth router is working fine.",
+  });
+});
+
 export default authRouter;
