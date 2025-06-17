@@ -10,6 +10,18 @@ const user = new mongoose.Schema(
     lastName: {
       type: String,
     },
+    username: {
+      type: String,
+      required: [true, "Please enter your username"],
+      unique: [true, "Username already exists"],
+      trim: true,
+      minlength: [3, "Username must be at least 3 characters"],
+      maxlength: [20, "Username must be at most 20 characters"],
+      match: [
+        /^[a-zA-Z0-9_]+$/,
+        "Username can only contain letters, numbers, and underscores",
+      ],
+    },
     email: {
       type: String,
       required: [true, "Please enter your email"],

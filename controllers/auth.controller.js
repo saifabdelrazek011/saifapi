@@ -7,6 +7,7 @@ import {
   acceptCodeSchema,
   changeForgetedPasswordSchema,
   changePasswordSchema,
+  updateUserInfoSchema,
 } from "../middlewares/validators/auth.validator.js";
 import { emailSchema } from "../middlewares/validators/validator.js";
 
@@ -69,7 +70,8 @@ const getLocationFromIP = async (ip) => {
 
 // Login functions
 export const signup = async (req, res) => {
-  const { firstName, lastName, email, password } = req.body;
+  const { username, firstName, lastName, email, password, confirmPassword } =
+    req.body;
   try {
     const existingUser = await User.findOne({ email });
 
@@ -80,10 +82,12 @@ export const signup = async (req, res) => {
     }
 
     const { error, value } = signupSchema.validate({
+      username,
       firstName,
       lastName,
       email,
       password,
+      confirmPassword,
     });
 
     if (error) {
@@ -91,10 +95,17 @@ export const signup = async (req, res) => {
         .status(400)
         .json({ success: false, message: error.details[0].message });
     }
+    if (password !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match.",
+      });
+    }
 
     const hashedPassword = await doHash(password, HASH_SALT);
 
     const newUser = new User({
+      username,
       firstName,
       lastName,
       email,
@@ -323,9 +334,8 @@ export const verifyUser = async (req, res) => {
     }
 
     const codeValue = providedCode.toString();
-    const existingUser = await User.findOne({ email }).select(
-      "+verificationCode +verificationCodeValidation",
-      { new: true }
+    const existingUser = await User.findOne({ email }, { new: true }).select(
+      "+verificationCode +verificationCodeValidation"
     );
 
     if (!existingUser) {
@@ -376,11 +386,12 @@ export const verifyUser = async (req, res) => {
 
 export const changePassword = async (req, res) => {
   const { userId, verified } = req.user;
-  const { oldPassword, newPassword } = req.body;
+  const { currentPassword, newPassword, confirmNewPassword } = req.body;
   try {
     const { error, value } = changePasswordSchema.validate({
-      oldPassword,
+      currentPassword,
       newPassword,
+      confirmNewPassword,
     });
 
     if (error) {
@@ -393,6 +404,13 @@ export const changePassword = async (req, res) => {
       return res
         .status(401)
         .json({ success: false, message: "User not verified" });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match.",
+      });
     }
 
     const existingUser = await User.findOne({ _id: userId }).select(
@@ -601,11 +619,34 @@ export const getMyUserInfo = async (req, res) => {
   }
 };
 
-export const updateUserInfo = async (req, res) => {
+export const updateMyUserInfo = async (req, res) => {
   const { userId } = req.user;
-  const { firstName, lastName, email } = req.body;
+  const { firstName, lastName, email, username } = req.body;
   try {
-    const { error, value } = updateUserSchema.validate({
+    const updater = await User.findById(userId);
+
+    if (!updater) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User does not exist" });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser._id.toString() !== userId) {
+      return res.status(400).json({
+        success: false,
+        message: "You are not authorized to update this account",
+      });
+    }
+
+    if (!existingUser) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User does not exist" });
+    }
+
+    const { error, value } = updateUserInfoSchema.validate({
+      username,
       firstName,
       lastName,
       email,
@@ -615,12 +656,7 @@ export const updateUserInfo = async (req, res) => {
         .status(400)
         .json({ success: false, message: error.details[0].message });
     }
-    const existingUser = await User.findOne({ email });
-    if (!existingUser) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User does not exist" });
-    }
+
     const compareIds = userId === existingUser._id.toString();
     if (!compareIds) {
       return res.status(400).json({
@@ -631,7 +667,7 @@ export const updateUserInfo = async (req, res) => {
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { firstName, lastName, email },
+      { username, firstName, lastName: lastName ? lastName : "", email },
       { new: true }
     );
     return res.status(200).json({

@@ -9,7 +9,7 @@ import {
   sendVerification,
   sendForgotPasswordCode,
   deleteAccount,
-  updateUserInfo,
+  updateMyUserInfo,
   getUser,
   getAllUsers,
   getMyUserInfo,
@@ -47,9 +47,9 @@ authRouter.get("/users", identifier, getAllUsers);
 
 authRouter.get("/users/me", identifier, getMyUserInfo);
 
-authRouter.get("/users/one", identifier, getUser);
+authRouter.patch("/users/me", identifier, updateMyUserInfo);
 
-authRouter.patch("/users/one", identifier, updateUserInfo);
+authRouter.get("/users/one", identifier, getUser);
 
 authRouter.delete("/users/one", identifier, deleteAccount);
 
