@@ -1,4 +1,4 @@
-import aj from "../config/arcjet.js";
+import { aj } from "../config/index.js";
 
 const arcjetMiddleware = async (req, res, next) => {
   try {
@@ -24,3 +24,4 @@ const arcjetMiddleware = async (req, res, next) => {
 };
 
 export default arcjetMiddleware;
+export { arcjetMiddleware };

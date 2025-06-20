@@ -65,4 +65,5 @@ export const newsletterSend = async (
   return await newsletterTransport.sendMail(mailOptions);
 };
 
+export { transport };
 export default transport;

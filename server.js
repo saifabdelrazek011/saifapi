@@ -7,15 +7,15 @@ import helmet from "helmet";
 import methodOverride from "method-override";
 
 // Import routers
-import authRouter from "./routers/auth.router.js";
-import postsRouter from "./routers/posts.router.js";
-import shorturlsRouter from "./routers/shorturls.router.js";
-import subscriptionRouter from "./routers/subscription.routes.js";
-import newsletterRouter from "./routers/newsletter.router.js";
+import { authRouter, userRouter } from "./users/index.js";
+import { postsRouter } from "./posts/index.js";
+import { shortUrlsRouter } from "./shorturls/index.js";
+import { subscriptionRouter } from "./subscription/index.js";
+import { newsletterRouter } from "./newsletter/index.js";
 
 // Import middlewares
-import arcjetMiddleware from "./middlewares/arcjet.middleware.js";
-import { NODE_ENV, PORT } from "./config/env.js";
+import { arcjetMiddleware } from "./middlewares/index.js";
+import { NODE_ENV, PORT } from "./config/index.js";
 
 dotenv.config();
 
@@ -61,8 +61,9 @@ app.use(methodOverride("_method"));
 app.set("view engine", "ejs");
 
 app.use("/v1/auth", arcjetMiddleware, authRouter);
+app.use("/v1/users", arcjetMiddleware, userRouter);
 app.use("/v1/posts", arcjetMiddleware, postsRouter);
-app.use("/v1/shorturls", arcjetMiddleware, shorturlsRouter);
+app.use("/v1/shorturls", arcjetMiddleware, shortUrlsRouter);
 app.use("/v1/subscriptions", arcjetMiddleware, subscriptionRouter);
 app.use("/v1/newsletter", arcjetMiddleware, newsletterRouter);
 
