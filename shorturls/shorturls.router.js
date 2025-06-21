@@ -8,6 +8,7 @@ import {
   getUserShortUrls,
   getMyShortUrls,
   getShortUrlInfo,
+  getShortUrlById,
 } from "./shorturls.controller.js";
 import { apiKeyUserMiddleware, identifier } from "../middlewares/index.js";
 
@@ -15,11 +16,27 @@ const shortUrlsRouter = express.Router();
 
 shortUrlsRouter.post("/", apiKeyUserMiddleware, identifier, createShortUrl);
 shortUrlsRouter.get("/", apiKeyUserMiddleware, identifier, getMyShortUrls);
+shortUrlsRouter.get(
+  "/:shorturlId",
+  apiKeyUserMiddleware,
+  identifier,
+  getShortUrlById
+);
+shortUrlsRouter.patch(
+  "/:shorturlId",
+  apiKeyUserMiddleware,
+  identifier,
+  updateShortUrl
+);
+shortUrlsRouter.delete(
+  "/:shorturlId",
+  apiKeyUserMiddleware,
+  identifier,
+  deleteShortUrl
+);
 
 shortUrlsRouter.get("/all", identifier, getAllShortUrls);
 shortUrlsRouter.get("/info/:shorturl", getShortUrlInfo);
-shortUrlsRouter.patch("/:shorturlId", identifier, updateShortUrl);
-shortUrlsRouter.delete("/:shorturlId", identifier, deleteShortUrl);
 shortUrlsRouter.get("/user/:userId", identifier, getUserShortUrls);
 shortUrlsRouter.get("/to/:shorturl", useShortUrl);
 shortUrlsRouter.get("/to", useShortUrl);

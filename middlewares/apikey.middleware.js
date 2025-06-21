@@ -37,7 +37,7 @@ export const apiKeyNewsletterMiddleware = async (req, res, next) => {
 // This middleware is used to authenticate users via API keys.
 export const apiKeyUserMiddleware = async (req, res, next) => {
   const apiKey =
-    req.headers["x-api-key"] || req.query.apiKey || req.body.apiKey;
+    req?.headers["x-api-key"] || req?.query?.apiKey || req?.body?.apiKey;
 
   if (!apiKey) {
     next();

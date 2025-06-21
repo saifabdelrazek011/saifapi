@@ -1,5 +1,8 @@
 import { User } from "./users.model.js";
-import { deleteAccountSchema } from "./auth/auth.validation.js";
+import {
+  deleteAccountSchema,
+  updateUserInfoSchema,
+} from "./users.validation.js";
 import { emailSchema } from "../middlewares/index.js";
 import { SURE_MESSAGE } from "../config/index.js";
 
@@ -29,6 +32,7 @@ export const getMyUserInfo = async (req, res) => {
 export const updateMyUserInfo = async (req, res) => {
   const updater = req.user;
   const { firstName, lastName, email, username } = req.body;
+
   try {
     if (!updater) {
       return res
@@ -36,18 +40,11 @@ export const updateMyUserInfo = async (req, res) => {
         .json({ success: false, message: "User does not exist" });
     }
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser._id.toString() !== updater._id.toString()) {
+    if (!firstName && !email && !username && !lastName) {
       return res.status(400).json({
         success: false,
-        message: "You are not authorized to update this account",
+        message: "You Should provide any field to update",
       });
-    }
-
-    if (!existingUser) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User does not exist" });
     }
 
     const { error, value } = updateUserInfoSchema.validate({
@@ -62,12 +59,15 @@ export const updateMyUserInfo = async (req, res) => {
         .json({ success: false, message: error.details[0].message });
     }
 
-    const compareIds = updater._id.toString() === existingUser._id.toString();
-    if (!compareIds) {
-      return res.status(400).json({
-        success: false,
-        message: "You are not authorized to update this account",
-      });
+    // Fill in missing fields with existing values
+    if (firstName === "") {
+      firstName = updater.firstName ? updater.firstName : "";
+    }
+    if (email === "") {
+      email = updater.email ? updater.email : "";
+    }
+    if (username === "") {
+      username = updater.username ? updater.username : "";
     }
 
     const updatedUser = await User.findByIdAndUpdate(

@@ -111,6 +111,46 @@ export const getAllShortUrls = async (req, res) => {
   }
 };
 
+// GET A SHORT URL BY ID
+export const getShortUrlById = async (req, res) => {
+  const { shorturlId } = req.params;
+  const viewerUser = req.user;
+  try {
+    if (!viewerUser) {
+      return res
+        .status(404)
+        .json({ success: false, message: "You are not registered." });
+    }
+    const shortUrl = await ShortUrl.findById(shorturlId);
+    if (!shortUrl) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Short URL not found." });
+    }
+    if (
+      viewerUser._id.toString() !== shortUrl.createdBy.toString() &&
+      !viewerUser.roles.includes("shorturlsAdmin") &&
+      !viewerUser.roles.includes("superAdmin")
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: You are not allowed to view this short URL.",
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      message: "Short URL fetched successfully.",
+      shortUrl: shortUrl,
+    });
+  } catch (error) {
+    console.error("Error fetching short URL by ID:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error: " + error.message,
+    });
+  }
+};
+
 // CREATE A NEW SHORT URL
 export const createShortUrl = async (req, res) => {
   const creatorUser = req.user;

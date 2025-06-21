@@ -36,7 +36,19 @@ app.use(
             }
             callback(new Error("Not allowed by CORS"));
           }
-        : ["http://localhost:3000", "http://localhost:5173"],
+        : (origin, callback) => {
+            // Allow all localhost origins in development
+            if (!origin) return callback(null, true);
+            try {
+              const { hostname } = new URL(origin);
+              if (hostname === "localhost" || hostname === "127.0.0.1") {
+                return callback(null, true);
+              }
+            } catch (e) {
+              // Invalid origin, reject
+            }
+            callback(new Error("Not allowed by CORS"));
+          },
     credentials: true,
   })
 );
