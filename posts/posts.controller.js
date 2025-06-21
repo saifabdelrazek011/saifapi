@@ -29,12 +29,12 @@ export const getPosts = async (req, res) => {
 
 export const createPost = async (req, res) => {
   const { title, description } = req.body;
-  const { userId } = req.user;
+  const user = req.user;
   try {
     const { error, value } = createPostSchema.validate({
       title,
       description,
-      userId,
+      userId: user._id.toString(),
     });
 
     if (error) {
@@ -46,7 +46,7 @@ export const createPost = async (req, res) => {
     const newPost = new Post({
       title,
       description,
-      userId,
+      userId: user._id.toString(),
     });
 
     const result = await newPost.save();
@@ -76,13 +76,13 @@ export const singlePost = async (req, res) => {
 
 export const updatePost = async (req, res) => {
   const { postId } = req.params;
-  const { userId } = req.user;
+  const user = req.user;
   const { title, description } = req.body;
   try {
     const { error, value } = createPostSchema.validate({
       title,
       description,
-      userId,
+      userId: user._id.toString(),
     });
 
     if (error) {
@@ -98,7 +98,7 @@ export const updatePost = async (req, res) => {
         .json({ success: false, message: "Post not found" });
     }
 
-    if (existingPost.userId.toString() !== userId) {
+    if (existingPost.userId.toString() !== user._id.toString()) {
       return res.status(401).json({
         success: false,
         message: "You are not authorized to update this post",
@@ -121,7 +121,7 @@ export const updatePost = async (req, res) => {
 };
 export const deletePost = async (req, res) => {
   const { postId } = req.params;
-  const { userId } = req.user;
+  const user = req.user;
   try {
     const existingPost = await Post.findOne({ _id: postId });
     if (!existingPost) {
@@ -129,7 +129,7 @@ export const deletePost = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Post not found" });
     }
-    if (existingPost.userId.toString() !== userId) {
+    if (existingPost.userId.toString() !== user._id.toString()) {
       return res.status(401).json({
         success: false,
         message: "You are not authorized to delete this post",

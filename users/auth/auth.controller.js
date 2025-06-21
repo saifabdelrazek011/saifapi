@@ -382,7 +382,7 @@ export const verifyUser = async (req, res) => {
 };
 
 export const changePassword = async (req, res) => {
-  const { userId, verified } = req.user;
+  const { verified } = req.user;
   const { currentPassword, newPassword, confirmNewPassword } = req.body;
   try {
     const { error, value } = changePasswordSchema.validate({
@@ -408,16 +408,6 @@ export const changePassword = async (req, res) => {
         success: false,
         message: "Passwords do not match.",
       });
-    }
-
-    const existingUser = await User.findOne({ _id: userId }).select(
-      "+password"
-    );
-
-    if (!existingUser) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User does not exist" });
     }
 
     const isPasswordValid = await doHashValidation(

@@ -20,6 +20,7 @@ import { NODE_ENV, PORT } from "./config/index.js";
 dotenv.config();
 
 const app = express();
+
 app.use(
   cors({
     origin:
@@ -35,22 +36,13 @@ app.use(
             }
             callback(new Error("Not allowed by CORS"));
           }
-        : (origin, callback) => {
-            // Allow all localhost origins in development
-            if (!origin) return callback(null, true);
-            try {
-              const { hostname } = new URL(origin);
-              if (hostname === "localhost" || hostname === "127.0.0.1") {
-                return callback(null, true);
-              }
-            } catch (e) {
-              // Invalid origin, reject
-            }
-            callback(new Error("Not allowed by CORS"));
-          },
+        : ["http://localhost:3000", "http://localhost:5173"],
     credentials: true,
   })
 );
+// Allow Access short URLs from any origin
+app.use("/v1/shorturls", cors({ origin: true, credentials: false }));
+
 // Security headers
 app.use(helmet());
 app.use(express.json());

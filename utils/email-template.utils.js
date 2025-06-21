@@ -13,24 +13,12 @@ export const signupTemplate = (userName) => {
   `;
 };
 
-export const loginNotificationTemplate = (
-  username,
-  ipAddress,
-  location,
-  time,
-  requestedAt
-) => {
+export const loginNotificationTemplate = (username) => {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2>New Login Alert</h2>
       <p>Hello ${username},</p>
       <p>We detected a new login to your account with the following details:</p>
-      <div style="background: #f4f4f4; padding: 15px; margin: 10px 0;">
-        <p style="margin: 5px 0;"><strong>IP Address:</strong> ${ipAddress}</p>
-        <p style="margin: 5px 0;"><strong>Location:</strong> ${location}</p>
-        <p style="margin: 5px 0;"><strong>Time:</strong> ${time}</p>
-    </div>
-      <p>This login was requested at: <strong>${requestedAt}</strong></p>
       <p>If this was you, you can ignore this email. If you didn't sign in to your account, please change your password immediately and contact support.</p>
       <p>Best regards,<br>SaifAuth Team</p>
       <p>Found Issues contact: dev@saifabdelrazek.com</p>

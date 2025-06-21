@@ -7,16 +7,9 @@ import { doHashValidation } from "../utils/index.js";
 
 // User Management Controllers
 export const getMyUserInfo = async (req, res) => {
-  const { userId } = req.user;
+  const user = req.user;
   try {
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized user",
-      });
-    }
-    const existingUser = await User.findById(userId).select("+password");
-    if (!existingUser) {
+    if (!user) {
       return res
         .status(404)
         .json({ success: false, message: "User does not exist" });
@@ -25,7 +18,7 @@ export const getMyUserInfo = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "User retrieved successfully",
-      user: existingUser,
+      user: user,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -34,11 +27,9 @@ export const getMyUserInfo = async (req, res) => {
 
 // Update User Information
 export const updateMyUserInfo = async (req, res) => {
-  const { userId } = req.user;
+  const updater = req.user;
   const { firstName, lastName, email, username } = req.body;
   try {
-    const updater = await User.findById(userId);
-
     if (!updater) {
       return res
         .status(404)
@@ -46,7 +37,7 @@ export const updateMyUserInfo = async (req, res) => {
     }
 
     const existingUser = await User.findOne({ email });
-    if (existingUser._id.toString() !== userId) {
+    if (existingUser._id.toString() !== updater._id.toString()) {
       return res.status(400).json({
         success: false,
         message: "You are not authorized to update this account",
@@ -71,7 +62,7 @@ export const updateMyUserInfo = async (req, res) => {
         .json({ success: false, message: error.details[0].message });
     }
 
-    const compareIds = userId === existingUser._id.toString();
+    const compareIds = updater._id.toString() === existingUser._id.toString();
     if (!compareIds) {
       return res.status(400).json({
         success: false,
@@ -80,7 +71,7 @@ export const updateMyUserInfo = async (req, res) => {
     }
 
     const updatedUser = await User.findByIdAndUpdate(
-      userId,
+      updater._id,
       { username, firstName, lastName: lastName ? lastName : "", email },
       { new: true }
     );
@@ -97,7 +88,7 @@ export const updateMyUserInfo = async (req, res) => {
 // Update User Information
 export const deleteAccount = async (req, res) => {
   const { email, password, sureMessage } = req.body;
-  const { userId } = req.user;
+  const user = req.user;
   try {
     const { error, value } = deleteAccountSchema.validate({
       email,
@@ -134,7 +125,7 @@ export const deleteAccount = async (req, res) => {
       });
     }
 
-    const compareIds = userId === existingUser._id.toString();
+    const compareIds = user._id.toString() === existingUser._id.toString();
 
     if (!compareIds) {
       return res.status(400).json({
@@ -143,7 +134,7 @@ export const deleteAccount = async (req, res) => {
       });
     }
 
-    await User.deleteOne({ _id: userId });
+    await User.findByIdAndDelete(user._id);
     return res
       .status(200)
       .json({ success: true, message: "Account deleted successfully" });
@@ -154,7 +145,7 @@ export const deleteAccount = async (req, res) => {
 
 // Admin Controllers
 export const getUser = async (req, res) => {
-  const viewerId = req.user.userId;
+  const viewer = req.user;
   const { email } = req.body;
   try {
     const { error, value } = emailSchema.validate(email);
@@ -163,7 +154,6 @@ export const getUser = async (req, res) => {
         .status(400)
         .json({ success: false, message: error.details[0].message });
     }
-    const viewer = await User.findById(viewerId);
 
     if (!viewer) {
       return res
@@ -207,9 +197,8 @@ export const getUser = async (req, res) => {
 };
 
 export const getAllUsers = async (req, res) => {
-  const viewerId = req.user.userId;
+  const viewUser = req.user;
   try {
-    const viewUser = await User.findById(viewerId);
     if (viewUser.roles.includes("authAdmin")) {
       const existingUsers = await User.find();
       return res.status(200).json({

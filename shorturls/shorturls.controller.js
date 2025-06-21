@@ -1,17 +1,15 @@
 import ShortUrl from "./shorturls.model.js";
 import { nanoid } from "nanoid";
-import { User } from "../users/index.js";
 
 import { createShortUrlSchema } from "./shorturls.validation.js";
 
 // GET A USER'S SHORT URLS
 export const getUserShortUrls = async (req, res) => {
   const { userId } = req.params;
-  const viewerId = req.user.userId;
+  const viewerUser = req.user;
   try {
-    const viewerUser = await User.findById(viewerId);
     if (
-      viewerId !== userId &&
+      viewerUser._id.toString() !== userId &&
       !viewerUser.roles.includes("shorturlsAdmin") &&
       !viewerUser.roles.includes("superAdmin")
     ) {
@@ -46,15 +44,14 @@ export const getUserShortUrls = async (req, res) => {
 
 // GET MY SHORT URLS
 export const getMyShortUrls = async (req, res) => {
-  const viewerId = req.user.userId;
+  const viewerUser = req.user;
   try {
-    const viewerUser = await User.findById(viewerId);
     if (!viewerUser) {
       return res
         .status(404)
         .json({ success: false, message: "You are not registered." });
     }
-    const shortUrls = await ShortUrl.find({ createdBy: viewerId });
+    const shortUrls = await ShortUrl.find({ createdBy: viewerUser._id });
     if (!shortUrls || shortUrls.length === 0) {
       return res
         .status(404)
@@ -76,9 +73,8 @@ export const getMyShortUrls = async (req, res) => {
 
 // GET ALL SHORT URLS FOR ADMIN OR SUPERADMIN
 export const getAllShortUrls = async (req, res) => {
-  const viewerId = req.user.userId;
+  const viewerUser = req.user;
   try {
-    const viewerUser = await User.findById(viewerId);
     if (!viewerUser) {
       return res
         .status(404)
@@ -117,11 +113,10 @@ export const getAllShortUrls = async (req, res) => {
 
 // CREATE A NEW SHORT URL
 export const createShortUrl = async (req, res) => {
-  const creatorId = req.user.userId;
+  const creatorUser = req.user;
   const { fullUrl, shortUrl } = req.body;
 
   try {
-    const creatorUser = await User.findById(creatorId);
     if (!creatorUser) {
       return res
         .status(404)
@@ -151,7 +146,7 @@ export const createShortUrl = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Full URL is required." });
     }
-    if (!creatorId) {
+    if (!creatorUser) {
       return res.status(401).json({
         success: false,
         message: "Unauthorized: you must be logged in to create a short URL.",
@@ -174,7 +169,7 @@ export const createShortUrl = async (req, res) => {
       });
     }
 
-    await ShortUrl.create({ full: fullUrl, short, createdBy: creatorId });
+    await ShortUrl.create({ full: fullUrl, short, createdBy: creatorUser._id });
     return res.status(201).json({
       success: true,
       message: "Short URL created successfully.",
@@ -235,11 +230,10 @@ export const getShortUrlInfo = async (req, res) => {
 // UPDATE AN EXISTING SHORT URL
 export const updateShortUrl = async (req, res) => {
   const { fullUrl, shortUrl } = req.body;
-  const updaterId = req.user.userId;
+  const updaterUser = req.user;
   const { shorturlId } = req.params;
 
   try {
-    const updaterUser = await User.findById(updaterId);
     if (!updaterUser) {
       return res
         .status(404)
@@ -268,7 +262,7 @@ export const updateShortUrl = async (req, res) => {
         .status(400)
         .json({ success: false, message: "Full URL is required." });
     }
-    if (!updaterId) {
+    if (!updaterUser) {
       return res.status(401).json({
         success: false,
         message: "Unauthorized: you must be logged in to update a short URL.",
@@ -296,7 +290,7 @@ export const updateShortUrl = async (req, res) => {
       !updaterUser ||
       (!updaterUser.roles.includes("shorturlsAdmin") &&
         !updaterUser.roles.includes("superAdmin") &&
-        requestedUrl.createdBy.toString() !== updaterId)
+        requestedUrl.createdBy.toString() !== updaterUser._id.toString())
     ) {
       return res.status(403).json({
         success: false,
@@ -329,10 +323,10 @@ export const updateShortUrl = async (req, res) => {
 
 // DELETE A SHORT URL
 export const deleteShortUrl = async (req, res) => {
-  const deleterId = req.user.userId;
+  const deleterUser = req.user;
   const { shorturlId } = req.params;
   try {
-    if (!deleterId) {
+    if (!deleterUser) {
       return res.status(401).json({
         success: false,
         message: "Unauthorized: you must be logged in to delete a short URL.",
@@ -345,12 +339,12 @@ export const deleteShortUrl = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Short URL not found." });
     }
-    const deleterUser = await User.findById(deleterId);
+
     if (
       !deleterUser ||
       (!deleterUser.roles.includes("shorturlsAdmin") &&
         !deleterUser.roles.includes("superAdmin") &&
-        requestedUrl.createdBy.toString() !== deleterId)
+        requestedUrl.createdBy.toString() !== deleterUser._id.toString())
     ) {
       return res.status(403).json({
         success: false,

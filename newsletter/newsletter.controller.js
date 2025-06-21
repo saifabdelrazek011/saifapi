@@ -22,7 +22,6 @@ import { newsletterSend } from "../config/index.js";
 
 // Subscription controller for newsletters
 export const subscribeToNewsletter = async (req, res) => {
-  u;
   const { name, email } = req.body;
   const { providerId } = req.user;
 
@@ -316,9 +315,8 @@ export const updateNewsletterSubscriptionName = async (req, res) => {
 
 // Provider controllers
 export const getCurrentNewsletterProvider = async (req, res) => {
-  const viewerId = req.user.userId;
+  const viewer = req.user;
   try {
-    const viewer = await User.findById(viewerId);
     if (
       !viewer ||
       !viewer.roles ||
@@ -354,11 +352,9 @@ export const getCurrentNewsletterProvider = async (req, res) => {
 
 export const AddNewsletterProvider = async (req, res) => {
   const { providerName, providerEmail, providerPassword } = req.body;
-  const createrId = req.user.userId;
+  const creater = req.user;
 
   try {
-    const creater = await User.findById(createrId);
-
     if (
       !creater ||
       !creater.roles ||
@@ -504,12 +500,10 @@ export const AddNewsletterProvider = async (req, res) => {
 };
 
 export const deleteNewsletterProvider = async (req, res) => {
-  const viewerId = req.user.userId;
+  const viewer = req.user;
   const { providerEmail, providerPassword } = req.body;
 
   try {
-    const viewer = await User.findById(viewerId);
-
     if (
       !viewer ||
       !viewer.roles ||
@@ -594,10 +588,8 @@ export const deleteNewsletterProvider = async (req, res) => {
 
 // Admin and provider controllers
 export const getNewsletterSubscribers = async (req, res) => {
-  const viewerId = req.user.userId;
+  const viewer = req.user;
   try {
-    const viewer = await User.findById(viewerId);
-
     if (
       !viewer ||
       !viewer.roles ||
@@ -657,9 +649,8 @@ export const getNewsletterSubscribers = async (req, res) => {
 };
 
 export const getNewsletterProviders = async (req, res) => {
-  const viewerId = req.user.userId;
+  const viewer = req.user;
   try {
-    const viewer = await User.findById(viewerId);
     if (
       !viewer ||
       !viewer.roles ||
@@ -696,9 +687,8 @@ export const getNewsletterProviders = async (req, res) => {
 };
 
 export const getNewsletterProviderWorkers = async (req, res) => {
-  const viewerId = req.user.userId;
+  const viewer = req.user;
   try {
-    const viewer = await User.findById(viewerId);
     if (
       !viewer ||
       !viewer.roles ||
@@ -749,10 +739,8 @@ export const getNewsletterProviderWorkers = async (req, res) => {
 
 // Provider API key controllers
 export const createProviderApiKey = async (req, res) => {
-  const userId = req.user.userId;
+  const user = req.user;
   try {
-    const user = await User.findById(userId);
-
     if (!user || !user.roles || !user.roles.includes("newsletterProvider")) {
       return res.status(403).json({
         status: "fail",
@@ -818,9 +806,8 @@ export const createProviderApiKey = async (req, res) => {
 };
 
 export const changeProviderApiKey = async (req, res) => {
-  const userId = req.user.userId;
+  const user = req.user;
   try {
-    const user = await User.findById(userId);
     if (!user || !user.roles || !user.roles.includes("newsletterProvider")) {
       return res.status(403).json({
         status: "fail",
@@ -879,9 +866,8 @@ export const changeProviderApiKey = async (req, res) => {
 };
 
 export const deleteProviderApiKey = async (req, res) => {
-  const userId = req.user.userId;
+  const user = req.user;
   try {
-    const user = await User.findById(userId);
     if (!user || !user.roles || !user.roles.includes("newsletterProvider")) {
       return res.status(403).json({
         status: "fail",
@@ -925,10 +911,9 @@ export const deleteProviderApiKey = async (req, res) => {
 // Setting Users as providers Controllers
 export const setUserAsProvider = async (req, res) => {
   const { email, providerPassword } = req.body;
-  const viewerId = req.user.userId;
+  const viewer = req.user;
 
   try {
-    const viewer = await User.findById(viewerId);
     if (
       !viewer ||
       !viewer.roles ||
@@ -1008,11 +993,10 @@ export const setUserAsProvider = async (req, res) => {
 };
 
 export const removeUserAsProvider = async (req, res) => {
-  const viewerId = req.user.userId;
+  const viewer = req.user;
   const { email, providerPassword } = req.body;
 
   try {
-    const viewer = await User.findById(viewerId);
     if (
       !viewer ||
       !viewer.roles ||
@@ -1101,11 +1085,10 @@ export const removeUserAsProvider = async (req, res) => {
 
 // Setting User as Provider Worker Controllers
 export const setUserAsProviderWorker = async (req, res) => {
-  const viewerId = req.user.userId;
+  const viewer = req.user;
   const { email, providerPassword } = req.body;
 
   try {
-    const viewer = await User.findById(viewerId);
     if (
       !viewer ||
       !viewer.roles ||
@@ -1193,11 +1176,10 @@ export const setUserAsProviderWorker = async (req, res) => {
 };
 
 export const removeUserAsProviderWorker = async (req, res) => {
-  const viewerId = req.user.userId;
+  const viewer = req.user;
   const { email, providerPassword } = req.body;
 
   try {
-    const viewer = await User.findById(viewerId);
     if (
       !viewer ||
       !viewer.roles ||
@@ -1289,7 +1271,7 @@ export const setEmailServiceDetails = async (req, res) => {
     providerPassword,
   } = req.body;
 
-  const viewerId = req.user.userId;
+  const viewer = req.user;
 
   try {
     const { error, value } = setEmailServiceDetailsSchema.validate({
@@ -1297,7 +1279,7 @@ export const setEmailServiceDetails = async (req, res) => {
       emailServiceAddress,
       emailServicePassword,
       emailServiceName,
-      viewerId: viewerId?.toString(),
+      viewerId: viewer ? viewer._id.toString() : undefined,
       providerPassword,
     });
 
@@ -1308,7 +1290,6 @@ export const setEmailServiceDetails = async (req, res) => {
       });
     }
 
-    const viewer = await User.findById(viewerId);
     if (
       !viewer ||
       !viewer.roles ||
@@ -1395,14 +1376,14 @@ export const setEmailServiceDetails = async (req, res) => {
 
 export const sendNewsletter = async (req, res) => {
   const { senderName, subject, content, providerPassword } = req.body;
-  const senderId = req.user.userId;
+  const sender = req.user;
   try {
     const { error, value } = sendNewsletterSchema.validate({
       senderName,
       subject,
       content,
       providerPassword,
-      senderId: senderId?.toString(),
+      senderId: sender ? sender?._id.toString() : undefined,
     });
     if (error) {
       return res.status(400).json({
