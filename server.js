@@ -30,7 +30,7 @@ app.use(
             if (!origin) return callback(null, true);
 
             // Regex to match your domain and all subdomains
-            const allowed = /\.?saifabdelrazek\.com$/;
+            const allowed = /\.?(saifabdelrazek\.com|saifdev\.xyz)$/;
             if (allowed.test(new URL(origin).hostname)) {
               return callback(null, true);
             }
