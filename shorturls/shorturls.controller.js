@@ -2,6 +2,60 @@ import ShortUrl from "./shorturls.model.js";
 import { nanoid } from "nanoid";
 
 import { createShortUrlSchema } from "./shorturls.validation.js";
+import mongoose from "mongoose";
+
+export const checkShortUrlExists = async (req, res) => {
+  let shortUrlId = req.params.shorturlId;
+  const viewerUser = req.user;
+  try {
+    if (!viewerUser) {
+      return res
+        .status(404)
+        .json({ success: false, message: "You are not registered." });
+    }
+
+    if (!shortUrlId) throw new Error("Short URL ID is required");
+
+    if (typeof shortUrlId !== "string") {
+      return res
+        .status(400)
+        .json({ success: false, message: "Short URL ID must be a string." });
+    }
+    // convert the string into a valid ObjectId
+    shortUrlId = shortUrlId.trim();
+    // convert string to ObjectId
+    if (shortUrlId.length !== 24) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Short URL ID format. Must be 24 characters long.",
+      });
+    }
+    shortUrlId = await new mongoose.Types.ObjectId(shortUrlId);
+
+    if (!shortUrlId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid Short URL ID format." });
+    }
+    // Check if the short URL exists
+    const shortUrl = await ShortUrl.findOne({
+      _id: shortUrlId,
+      createdBy: viewerUser._id,
+    });
+    if (!shortUrl) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "Short URL does not exist, or you do not have permission to check it.",
+      });
+    }
+    return res
+      .status(200)
+      .json({ success: !!shortUrl, message: "Short URL exists." });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 // GET A USER'S SHORT URLS
 export const getUserShortUrls = async (req, res) => {

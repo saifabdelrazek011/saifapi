@@ -9,6 +9,7 @@ import {
   getMyShortUrls,
   getShortUrlInfo,
   getShortUrlById,
+  checkShortUrlExists,
 } from "./shorturls.controller.js";
 import { apiKeyUserMiddleware, identifier } from "../middlewares/index.js";
 
@@ -41,7 +42,9 @@ shortUrlsRouter.get("/user/:userId", identifier, getUserShortUrls);
 shortUrlsRouter.get("/to/:shorturl", useShortUrl);
 shortUrlsRouter.get("/to", useShortUrl);
 
-shortUrlsRouter.get("/test", (req, res) => {
+shortUrlsRouter.get("/check/:shorturlId", checkShortUrlExists);
+
+shortUrlsRouter.get("/try/test", (req, res) => {
   res.status(200).json({
     success: true,
     message: "Short URLs router is working fine.",

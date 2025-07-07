@@ -13,7 +13,9 @@ const aj = arcjet({
       mode: "LIVE",
       allow: [
         "CATEGORY:SEARCH_ENGINE",
+        "CATEGORY:SOCIAL",
         "POSTMAN",
+        "JAVASCRIPT_AXIOS",
         "CURL",
         "HTTP_CLIENT",
         "API_CLIENT",

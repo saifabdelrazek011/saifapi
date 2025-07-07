@@ -11,15 +11,16 @@ import {
   getMyApiKey,
   updateMyApiKey,
   deleteMyApiKey,
+  checkUserApiKeyExists,
 } from "./apikeys/apikey.controller.js";
-import { identifier } from "../middlewares/index.js";
+import { apiKeyUserMiddleware, identifier } from "../middlewares/index.js";
 
 const userRouter = Router();
 
 // Users routes
 userRouter.get("", identifier, getAllUsers);
 
-userRouter.get("/me", identifier, getMyUserInfo);
+userRouter.get("/me", apiKeyUserMiddleware, identifier, getMyUserInfo);
 
 userRouter.patch("/me", identifier, updateMyUserInfo);
 
@@ -35,6 +36,8 @@ userRouter.post("/apikey", identifier, createUserApiKey);
 userRouter.patch("/apikey", identifier, updateMyApiKey);
 
 userRouter.delete("/apikey", identifier, deleteMyApiKey);
+
+userRouter.get("/apikey/check", apiKeyUserMiddleware, checkUserApiKeyExists);
 
 export default userRouter;
 export { userRouter };

@@ -158,3 +158,18 @@ export const updateMyApiKey = async (req, res) => {
     });
   }
 };
+
+export const checkUserApiKeyExists = async (req, res) => {
+  // This acually depends on the apikey middleware
+  const user = req.user;
+  if (!user) {
+    return res.status(401).json({
+      status: "error",
+      message: "API key does not exist",
+    });
+  }
+  return res.status(200).json({
+    status: "success",
+    message: "API key exists",
+  });
+};

@@ -64,6 +64,7 @@ export const apiKeyUserMiddleware = async (req, res, next) => {
     next();
     return;
   }
+
   if (user.isBanned) {
     next();
     return;
