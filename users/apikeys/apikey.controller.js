@@ -14,23 +14,35 @@ export const createUserApiKey = async (req, res) => {
   }
   try {
     const apiKey = await createAPIKEY();
-    const lookupHash = await hmacProcess(apiKey);
-    const encryptedApiKey = await encryptApiKey(apiKey);
-    const hashedApiKey = await doHash(apiKey);
-
     if (!apiKey) {
       return res.status(500).json({
         status: "error",
         message: "Failed to create API key",
       });
     }
-
-    if (!hashedApiKey || !encryptedApiKey || !lookupHash) {
+    const lookupHash = await hmacProcess(apiKey);
+    if (!lookupHash) {
       return res.status(500).json({
         status: "error",
-        message: "Failed to hash or encrypt API key",
+        message: "Failed to create lookup hash for API key",
       });
     }
+    const encryptedApiKey = await encryptApiKey(apiKey);
+    if (!encryptedApiKey) {
+      return res.status(500).json({
+        status: "error",
+        message: "Failed to encrypt API key",
+      });
+    }
+    const hashedApiKey = await doHash(apiKey);
+    if (!hashedApiKey) {
+      return res.status(500).json({
+        status: "error",
+        message: "Failed to hash API key",
+      });
+    }
+
+    // Check if the user already has an API key
     const existingApiKey = await userApiKey.findOne({ userId: user._id });
 
     if (existingApiKey) {
