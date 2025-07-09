@@ -52,8 +52,6 @@ export const apiKeyUserMiddleware = async (req, res, next) => {
     return;
   }
 
-  const allApiKeys = await userApiKey.find({});
-
   const apikeyData = await userApiKey.findOne({ lookupHash });
 
   if (!apikeyData) {
