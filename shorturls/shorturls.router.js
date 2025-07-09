@@ -42,7 +42,12 @@ shortUrlsRouter.get("/user/:userId", identifier, getUserShortUrls);
 shortUrlsRouter.get("/to/:shorturl", useShortUrl);
 shortUrlsRouter.get("/to", useShortUrl);
 
-shortUrlsRouter.get("/check/:shorturlId", checkShortUrlExists);
+shortUrlsRouter.get(
+  "/check/:shorturlId",
+  apiKeyUserMiddleware,
+  identifier,
+  checkShortUrlExists
+);
 
 shortUrlsRouter.get("/try/test", (req, res) => {
   res.status(200).json({

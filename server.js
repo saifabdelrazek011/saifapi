@@ -15,7 +15,7 @@ import { newsletterRouter } from "./newsletter/index.js";
 
 // Import middlewares
 import { arcjetMiddleware } from "./middlewares/index.js";
-import { NODE_ENV, PORT } from "./config/index.js";
+import { NODE_ENV, PORT, ARCJET_ENV } from "./config/index.js";
 
 dotenv.config();
 
@@ -81,4 +81,6 @@ app.use((req, res) => {
 
 app.listen(PORT || 3000, () => {
   console.log("Server is running on port " + (PORT || 3000));
+  console.log("Environment: " + NODE_ENV);
+  console.log("Arcjet Environment: " + ARCJET_ENV);
 });

@@ -5,6 +5,7 @@ config({ path: `.env.${process.env.NODE_ENV || "development"}.local` });
 export const {
   PORT,
   NODE_ENV,
+  ARCJET_ENV,
   MONGODB_URI,
   JWT_SECRET,
   JWT_EXEXPIRES_IN,
@@ -14,7 +15,6 @@ export const {
   EMAIL_PASSWORD,
   HMAC_SECRET,
   HASH_SALT,
-  ARCJET_ENV,
   ARCJET_KEY,
   SURE_MESSAGE,
   QSTASH_URL,

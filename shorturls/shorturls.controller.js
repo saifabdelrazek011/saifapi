@@ -87,7 +87,6 @@ export const getUserShortUrls = async (req, res) => {
       shortUrls: shortUrls,
     });
   } catch (error) {
-    console.error("Error fetching user's short URLs:", error);
     res.status(500).json({
       success: false,
       message: "Internal Server Error",
@@ -117,7 +116,6 @@ export const getMyShortUrls = async (req, res) => {
       shortUrls: shortUrls,
     });
   } catch (error) {
-    console.error("Error fetching viewer user:", error);
     return res.status(500).json({
       success: false,
       message: "Internal Server Error: " + error.message,
@@ -157,7 +155,6 @@ export const getAllShortUrls = async (req, res) => {
       message: "Forbidden: You are not allowed to view all short URLs.",
     });
   } catch (error) {
-    console.error("Error fetching all short URLs:", error);
     res.status(500).json({
       success: false,
       message: "Internal Server Error: " + error.message,
@@ -197,7 +194,6 @@ export const getShortUrlById = async (req, res) => {
       shortUrl: shortUrl,
     });
   } catch (error) {
-    console.error("Error fetching short URL by ID:", error);
     res.status(500).json({
       success: false,
       message: "Internal Server Error: " + error.message,
@@ -270,7 +266,6 @@ export const createShortUrl = async (req, res) => {
       shortUrl: `${domain}/v1/shorturls/${short}`,
     });
   } catch (error) {
-    console.error("Error creating short URL:", error);
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
@@ -288,7 +283,6 @@ export const useShortUrl = async (req, res) => {
     res.redirect(shortUrl.full);
     return;
   } catch (error) {
-    console.error("Error fetching short URL:", error);
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
@@ -312,7 +306,6 @@ export const getShortUrlInfo = async (req, res) => {
       shortUrl: shortUrl,
     });
   } catch (error) {
-    console.error("Error fetching short URL information:", error);
     return res.status(500).json({
       success: false,
       message: "Internal Server Error",
@@ -325,7 +318,7 @@ export const getShortUrlInfo = async (req, res) => {
 export const updateShortUrl = async (req, res) => {
   const { fullUrl, shortUrl } = req.body;
   const updaterUser = req.user;
-  const { shorturlId } = req.params;
+  let { shorturlId } = req.params;
 
   try {
     if (!updaterUser) {
@@ -341,7 +334,7 @@ export const updateShortUrl = async (req, res) => {
       });
     }
     // Validate the input
-    const { error, value } = createShortUrlSchema.validate({
+    const { error } = createShortUrlSchema.validate({
       fullUrl,
       shortUrl,
     });
@@ -351,27 +344,12 @@ export const updateShortUrl = async (req, res) => {
         message: `Validation error: ${error.message}`,
       });
     }
-    if (!fullUrl) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Full URL is required." });
-    }
-    if (!updaterUser) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized: you must be logged in to update a short URL.",
-      });
-    }
     if (!shorturlId) {
       return res
         .status(400)
         .json({ success: false, message: "Short URL ID is required." });
     }
-    if (!shortUrl) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Short URL is required." });
-    }
+
     const requestedUrl = await ShortUrl.findById(shorturlId);
 
     if (!requestedUrl) {
@@ -379,17 +357,38 @@ export const updateShortUrl = async (req, res) => {
         .status(404)
         .json({ success: false, message: "Short URL not found" });
     }
+    if (!requestedUrl.createdBy || !updaterUser?._id) {
+      throw new Error("CreatedBy or update id doesn't exist");
+    }
+
+    const isOwner =
+      requestedUrl?.createdBy &&
+      updaterUser?._id &&
+      requestedUrl.createdBy.toString() === updaterUser._id.toString();
 
     if (
-      !updaterUser ||
-      (!updaterUser.roles.includes("shorturlsAdmin") &&
-        !updaterUser.roles.includes("superAdmin") &&
-        requestedUrl.createdBy.toString() !== updaterUser._id.toString())
+      !updaterUser.roles.includes("shorturlsAdmin") &&
+      !updaterUser.roles.includes("superAdmin") &&
+      !isOwner
     ) {
       return res.status(403).json({
         success: false,
         message: "Forbidden: You are not allowed to update this short URL.",
       });
+    }
+
+    // Check if the new short URL already exists (excluding current one)
+    if (shortUrl && shortUrl !== requestedUrl.short) {
+      const existingShort = await ShortUrl.findOne({
+        short: shortUrl,
+        _id: { $ne: shorturlId },
+      });
+      if (existingShort) {
+        return res.status(400).json({
+          success: false,
+          message: "Short URL already exists.",
+        });
+      }
     }
 
     const updated = await ShortUrl.findByIdAndUpdate(
@@ -410,7 +409,7 @@ export const updateShortUrl = async (req, res) => {
       shortUrl: updated,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Error updating short URL:", err);
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
@@ -434,6 +433,10 @@ export const deleteShortUrl = async (req, res) => {
         .json({ success: false, message: "Short URL not found." });
     }
 
+    if (!requestedUrl.createdBy || !deleterUser?._id) {
+      throw new Error("CreatedBy or deleter id doesn't exist");
+    }
+
     if (
       !deleterUser ||
       (!deleterUser.roles.includes("shorturlsAdmin") &&
@@ -451,7 +454,7 @@ export const deleteShortUrl = async (req, res) => {
       .status(200)
       .json({ success: true, message: "Short URL deleted successfully." });
   } catch (error) {
-    console.error("Error deleting short URL:", error);
+    console.error("error: ", error);
     res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };

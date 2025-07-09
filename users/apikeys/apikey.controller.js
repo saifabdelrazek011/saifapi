@@ -20,7 +20,7 @@ export const createUserApiKey = async (req, res) => {
         message: "Failed to create API key",
       });
     }
-    const lookupHash = await hmacProcess(apiKey);
+    const lookupHash = hmacProcess(apiKey);
     if (!lookupHash) {
       return res.status(500).json({
         status: "error",
@@ -143,13 +143,14 @@ export const updateMyApiKey = async (req, res) => {
     const newApiKey = await createAPIKEY();
     const encryptedApiKey = await encryptApiKey(newApiKey);
     const hashedApiKey = await doHash(newApiKey);
+    const lookupHash = hmacProcess(newApiKey);
     if (!newApiKey) {
       return res.status(500).json({
         status: "error",
         message: "Failed to create new API key",
       });
     }
-    if (!hashedApiKey || !encryptedApiKey) {
+    if (!hashedApiKey || !encryptedApiKey || !lookupHash) {
       return res.status(500).json({
         status: "error",
         message: "Failed to hash or encrypt new API key",
@@ -157,6 +158,7 @@ export const updateMyApiKey = async (req, res) => {
     }
     existingApiKey.encryptedApiKey = encryptedApiKey;
     existingApiKey.hashedApiKey = hashedApiKey;
+    existingApiKey.lookupHash = lookupHash;
     await existingApiKey.save();
     res.status(200).json({
       status: "success",
@@ -173,15 +175,22 @@ export const updateMyApiKey = async (req, res) => {
 
 export const checkUserApiKeyExists = async (req, res) => {
   // This acually depends on the apikey middleware
-  const user = req.user;
-  if (!user) {
-    return res.status(401).json({
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(404).json({
+        status: "error",
+        message: "API key not found",
+      });
+    }
+    return res.status(200).json({
+      status: "success",
+      message: "API key exists",
+    });
+  } catch (error) {
+    return res.status(500).json({
       status: "error",
-      message: "API key does not exist",
+      message: error.message,
     });
   }
-  return res.status(200).json({
-    status: "success",
-    message: "API key exists",
-  });
 };

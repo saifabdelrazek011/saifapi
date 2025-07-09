@@ -4,6 +4,14 @@ const options = {
   dbName: DB_NAME,
 };
 
+if (!DB_NAME) {
+  console.error("Database name is not set in the environment variables.");
+}
+
+if (!NEWSLETTERS_DB_URI) {
+  console.error("NEWSLETTERS_DB_URI is not set in the environment variables.");
+}
+
 const newsletterDB = mongoose.createConnection(NEWSLETTERS_DB_URI, options);
 
 newsletterDB.on("error", (err) =>
@@ -13,14 +21,6 @@ newsletterDB.on("error", (err) =>
 newsletterDB.on("connected", () =>
   console.log("Newsletter DB connected successfully")
 );
-
-if (!DB_NAME) {
-  console.error("Database name is not set in the environment variables.");
-}
-
-if (!NEWSLETTERS_DB_URI) {
-  console.error("NEWSLETTERS_DB_URI is not set in the environment variables.");
-}
 
 export default newsletterDB;
 export { newsletterDB };

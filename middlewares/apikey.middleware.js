@@ -25,6 +25,7 @@ export const apiKeyNewsletterMiddleware = async (req, res, next) => {
       .json({ success: false, message: "Error processing API key" });
   }
   const apikeyData = await providerApiKey.findOne({ lookupHash });
+
   if (!apikeyData) {
     return res.status(403).json({ success: false, message: "Invalid API key" });
   }
@@ -50,6 +51,8 @@ export const apiKeyUserMiddleware = async (req, res, next) => {
     next();
     return;
   }
+
+  const allApiKeys = await userApiKey.find({});
 
   const apikeyData = await userApiKey.findOne({ lookupHash });
 
