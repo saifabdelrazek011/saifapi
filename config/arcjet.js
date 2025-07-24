@@ -19,6 +19,7 @@ const aj = arcjet({
         "CURL",
         "HTTP_CLIENT",
         "API_CLIENT",
+        "KUMA_MONITOR",
       ],
     }),
     tokenBucket({
